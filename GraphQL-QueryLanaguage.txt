@@ -1,0 +1,344 @@
+                                GraphQL - Apollo
+.....................................................................................
+java script - Typescript
+
+What is GraphQL?
+	GraphQL is a "new API" standard that provides a more efficient, powerful and flexible alternative to REST.
+
+API:
+ Appliation programming interface :
+   Entry and exit point for data access.
+
+How apis are represented /encapsulated?
+ inside objects
+
+Types of apis:
+ 1.local api
+	api which is part of single runtime- jvm
+ 2.remote api
+       rpc
+	 -webservices -  rest api,soap api
+         -rpi - grpc
+         -tcp based apps
+         -smtp based app
+       etc...
+
+WebServices:
+  Program which has api , which is accessed by other program via http protocal.
+
+XML based Webservice:(HTTP+SOAP):Soap webservices
+Data Independant based Webservice(any type of data format): JSON/XML/PDF etc...
+ RESTFull WebServices.
+
+Rest uses HTTP as default transport protocal which does not use any other app protcal like soap.
+
+Rest spec is based on spec called REST spec
+https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm
+
+REST:
+   REST has not been designed to be 'user centric' rather than data centric...
+
+if you define any api, which returns data set eg: if you query an api called products
+
+products may have so many fields, i dont want all fields which exposed by the api...
+
+GET  /api/products
+
+ =>[{
+  ...
+ }]
+
+Since REST not able to solve all types of user biz requirements, facebook was looking another solution to get data based "user centeric" not based on "data centeric"
+		         The birth of GraphQL
+
+
+
+At its core, GraphQL enables "declarative data fetching" where a client can specify exactly what data it needs from an API.
+
+ "Instead of multiple endpoints that return fixed data structures", a GraphQL server only exposes a single endpoint and responds with precisely the data a client asked for.
+
+ GraphQL one End Point for "Enter domain",Each Domain has its own CURD operations
+
+
+				     |-------Product -Read,Save,Update,Delete
+				     |-------Customer-Read,Save,Update,Delete
+  Client-------Single Endpoint ------|-------Payment-Read,Save,Update,Delete
+				     |-------Inventory-Read,Save,Update,Delete
+	
+
+REST endpoints:
+
+GET /api/products
+POST /api/products
+PUT /api/products/id
+DELETE /api/products/id
+
+GET /api/customers
+POST /api/customers
+PUT /api/customers/id
+DELETE /api/customers/id
+
+
+How GraphQL works?
+
+Graph means connected Nodes
+QL means Query langugage - You might have heard in databases like SQL
+.....................................................................................
+
+.....................................................................................
+			  How to begin with GraphQL
+
+
+GraphQL is platform and language independant.
+
+GraphQL Can be classified into two category
+
+1.Client side - How to send data(Request) to the GraphQL server.
+  in order to send data from the client face book published one spec called
+   "GraphQL Query language spec"
+
+2.Server side - How to build graph(object tree) from the data sources
+    "GraphQL Schema language spec"
+
+.....................................................................................
+		   Request and Response Model in REST
+
+http
+ GET   /api/customers-----------> REST server
+            <-------JSON/XML/PDF/etc....
+
+
+ POST   /api/customers-----------> REST server
+            <-------JSON/XML/PDF/etc....
+
+.....................................................................................			   GraphQL request and response model.
+
+Declarative Programming:
+
+What you write, you have to get the same structure.
+
+The Query request is more readable,declarative. WHich micics the javascript object literal syntax.
+
+js object:
+
+ let user =  {
+     id:1,
+     name:'joe'
+     friends: [
+        'bar','foo'
+     ]
+  } 
+
+GraphQL basic request structure
+
+GraphQL Request payload : GraphQL Query
+.......................................
+
+GraphQL Client 
+
+POST /endpoint
+  {
+     id
+     name
+     friends { ------------------------------>GraphQL Server
+	name
+     }
+  } 
+Response:JSON
+ {
+     "id":1,
+     "name":"joe"
+     "friends": [      <----------------------------- GraphQLAPIServer
+        "bar","foo"
+     ]
+  } 
+..............................................................................................
+				 REST AND CURD
+
+Operations Type
+
+GET ------Read
+POST -----CREATE
+PUT ------UPDATE
+DELETE----Remove
+.....................................................................................
+.............................................................................................			GRAPHQL And CURD
+
+
+GraphQL uses only URL which exposes Service
+
+
+  {
+     id
+     name
+     friends { -----------HTTP POST------------------> GraphQLServer
+        name
+     }
+  } 
+
+Since we have only one end point, how to Identify the different operations like create,read,update,delete.
+
+Thats where graphql offers "client language called GraphQL Query language"........
+
+GraphQL language offers syntax.
+
+
+Operation Types:
+
+1.Query
+  read
+2.mutation
+  create,update,delete
+3.subscription
+   Streaming
+
+query - a read only fetch
+mutation- a write followed by read
+subscription- a long live request that fetches data in response to source events
+....................................................................................
+			GraphQL Query language spec
+
+We are going to use "MOCK GraphQL API/service".
+
+
+We are going to use "MOCK GraphQL API/service".
+
+Tool to test graphql end points:
+1.client tool - playground
+https://www.graphqlbin.com/v2/new
+https://www.apollographql.com/docs/apollo-server/v2/testing/graphql-playground/
+
+2.demo api
+https://countries.trevorblades.com/
+....................................................................................
+			 GraphQL Query language specification
+.....................................................................................
+Concepts:
+ => Query encapsulation
+ => Query Header
+ => Query api
+ => fields
+ => arguments
+ => aliases
+ => fragements
+ => variables
+ => directives
+ => Mutations
+ => inline fragments
+
+1.selection set
+
+ selectionSet : { Selection }  => Query encapulation
+
+ selectionSet could be "query,mutation,subscription"
+
+ Selection Set  = { query or mutation or subscription} 
+  
+ query => readonly - fetching data from the server
+ mutation = write followed read  (CREATE,UPDATE,DELETE)
+ subscription => read only + streaming support
+
+Selection:
+ -apiName
+	-fields
+ 	-Fragement Spread
+        -lnline fragement.
+
+fields:
+query { 
+   person {
+    firstname =====>POST --------------------->Graphql server---execute
+    lastname
+   }
+}
+
+query - selection set - read
+person -Name of the api(method name from the sever)
+firstName,lastName - fields(Data) what i want.
+
+ 
+Selection set to be selected by somebody(Operation)
+
+An Operation selects the set of information it needs, exactly will receive that information
+
+Operation and Selection Set
+
+//read =>GET
+query {
+person{
+  firstname
+  lastname
+  age
+ }
+}
+
+//Write
+mutation createUser(params){
+  createuser(params) {
+     id
+     name
+  }
+}
+//streaming
+subscription getPriceQuote(params) {
+ getPrice(params) {
+   price
+   name
+ }
+ 
+}
+.
+
+Fields: 
+........
+At its simplest, GraphQL is about asking for specific fields on objects. 
+Let's start by looking at a very simple query and the result we get when we run it:
+
+Are properties of an object.
+
+eg:
+
+query {
+  countries {
+     name
+  }
+}
+
+Response:
+{
+  "data": {
+    "countries": [
+      {
+    
+        "name": "Andorra"
+      },
+      {
+      
+        "name": "United Arab Emirates"
+      },
+      {
+        
+        "name": "Afghanistan"
+      },
+     
+    ]
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
