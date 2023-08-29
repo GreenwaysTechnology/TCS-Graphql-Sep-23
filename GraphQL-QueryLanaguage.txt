@@ -543,6 +543,174 @@ Response:
     ]
   }
 }
+....................................................................................
+				Aliases
+...................................................................................
+
+Field alisases gives a dummy name for keys.
+
+Syntax:
+
+without aliases:
+
+{
+ user(id:1){
+   id
+   name
+ }
+}
+
+Response:
+{
+ "data" : {
+   "user": {
+       "id":1,
+        "name:: "Subramanian"
+     }
+ }
+}
+
+With aliases:
+ {
+   subramanian:user(id:1){
+     id
+     name
+    }
+ }
+
+{
+ "data" : {
+   "subramanian": {
+       "id":1,
+        "name:: "Subramanian"
+     }
+ }
+}
+
+eg:
+query getLanguageInfo($filter: LanguageFilterInput) {
+  myLanguage:languages(filter: $filter) {
+    languagecode:code
+    languageName:name
+  }
+}
+
+variable:
+{
+  "filter": {
+    "code": {
+      "eq": "en"
+    }
+  }
+}
+Response:
+{
+  "data": {
+    "myLanguage": [
+      {
+        "languagecode": "en",
+        "languageName": "English"
+      }
+    ]
+  }
+}
+....................................................................................
+				Fragments
+.....................................................................................
+
+What if i have some fields,duplicated across many apis, in order to avoid duplicates fragments are used.
+
+Without Fragement
+Syntax:
+
+query {
+  user(id:2){
+   
+     friends {
+      id
+      name
+      pic
+     }
+    mutalfriends {
+      id
+      name
+      pic
+     }
+  }
+
+}
+ 
+With Fragments:
+
+
+query {
+  user(id:2){
+   
+     friends {
+        ...friendsFields
+     }
+     mutalfriends {
+        ...friendsFields
+     }
+  }
+
+}
+framents friendsFields on User{
+      id
+      name
+      pic
+}
+eg:
+query countries {
+  countries {
+    ...CountryFields
+  }
+}
+fragment CountryFields on Country {
+  name
+  native
+}
+
+"data": {
+    "countries": [
+      {
+        "name": "Andorra",
+        "native": "Andorra"
+      },
+      {
+        "name": "United Arab Emirates",
+        "native": "دولة الإمارات العربية المتحدة"
+      }
+]
+
+query countries {
+  countries {
+    ...CountryFields
+  }
+}
+fragment CountryFields on Country {
+  name
+  native
+}
+
+With Aliases and extra fields:
+..............................
+query countries {
+  country1: countries {
+    capital
+    ...CountryFields
+  }
+  country2: countries {
+    ...CountryFields
+  }
+}
+fragment CountryFields on Country {
+  name
+  native
+}
+
+
+
 
 
 
