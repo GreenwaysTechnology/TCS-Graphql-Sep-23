@@ -324,6 +324,238 @@ Response:
     ]
   }
 }
+.....................................................................................
+
+More Fields:
+............
+query {
+  countries {
+    name
+    code
+    capital
+    currency
+  }
+}
+
+Response:
+{
+  "data": {
+    "countries": [
+      {
+        "name": "Andorra",
+        "code": "AD",
+        "capital": "Andorra la Vella",
+        "currency": "EUR"
+      },
+      {
+        "name": "United Arab Emirates",
+        "code": "AE",
+        "capital": "Abu Dhabi",
+        "currency": "AED"
+      },
+]
+.....................................................................................
+Query with QueryHeader:
+.......................
+
+query CountryDetails {
+  countries {
+    name
+    code
+    capital
+    currency
+  }
+}
+Here "CountryDetails" is query header
+....................................................................................
+				Nested Fields
+.....................................................................................
+
+query CountryWithContinent {
+  countries {
+    name
+    code
+    capital
+    continent {
+      code
+      name
+    }
+    
+  }
+}
+
+Response:
+{
+  "data": {
+    "countries": [
+      {
+        "name": "Andorra",
+        "code": "AD",
+        "capital": "Andorra la Vella",
+        "continent": {
+          "code": "EU",
+          "name": "Europe"
+        }
+      },
+      {
+        "name": "United Arab Emirates",
+        "code": "AE",
+        "capital": "Abu Dhabi",
+        "continent": {
+          "code": "AS",
+          "name": "Asia"
+        }
+      }
+]
+.....................................................................................
+
+Graphql runs method/api/function in server.
+
+1.method may take arg
+2.method return value - can be object , primitives(scalar)
+
+	countries():Country{
+
+
+        }
+	countries {
+	  code 
+	  name
+		
+        }
+
+  here we are invoking method called "countries" and which returns Country object from which we filter what field we want like code,name
+...................................................................................					Args and parameters
+...................................................................................
+
+What if i want to get data based on some condition or conditions.
+
+Syntax:
+
+Hard coded value: static args
+
+query getUser {
+     user(variableName:value) {
+	 id
+     }
+}
+EG:
+query CountryByCode {
+  country(code: "AU") {
+    name
+    code
+  }
+}
+Response:
+{
+  "data": {
+    "country": {
+      "name": "Australia",
+      "code": "AU"
+    }
+  }
+}
+.....................................................................................
+				Dynamic Parameters
+....................................................................................
+Variables:
+..........
+Variables are place holder to have dynamic values which are passed from outside.
+In case of clients app, you can pass via programs
+
+How to use Variables?
+ Variables are used with $VariableName convention
+
+Steps:
+1.Declare variable with data type as part of the query Header.
+
+Syntax:
+ 
+query queryHeader($variableName:DataType) {
+     api(variableName:$variableName) {
+	 fields
+     }
+}
+
+EG:
+query CountryByCode($code: ID!) {
+  country(code: $code) {
+    name
+    code
+  }
+}
+
+variables:
+{
+  "code": "US"
+}
+
+response:
+{
+  "data": {
+    "country": {
+      "name": "United States",
+      "code": "US"
+    }
+  }
+}
+
+Here $code is just variable which could be anything.
+ID is here is just data type which is "Serialized String".
+ID! -  Cant be null
+
+Basic Parameters types:
+.........................
+1.Scalar types(primitives)
+   ID,String,Float,Int,Boolean
+2.Complex types(Object Types)
+   Objects- Customer,Country,Continent,Lanaguage
+   Input - Special Complex Type , Primarily for passing complex input which is eq to     DTO
+
+How to pass complex types or input types?
+
+eg:
+query:
+
+query getLanguageInfo($filter: LanguageFilterInput) {
+  languages(filter: $filter) {
+    code
+    name
+  }
+}
+variables:
+{
+  "filter": {
+    "code": {
+      "eq": "en"
+    }
+  }
+}
+
+Response:
+{
+  "data": {
+    "languages": [
+      {
+        "code": "en",
+        "name": "English"
+      }
+    ]
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
