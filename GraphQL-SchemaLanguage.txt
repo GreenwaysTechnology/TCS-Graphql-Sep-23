@@ -1,0 +1,151 @@
+ 			  Graphql API Implementation
+.....................................................................................
+In order to build apis we have many technologies
+
+1.REST
+2.Graphql
+3.Grpc
+
+How to build REST apis?
+
+  Restfull webservices are built based on "Resources" in the Problem Domain.
+
+Resources are represented by "Object" which expose Data.
+
+Eg:
+ CustomerResource,OrderResource,PaymentResource,CourseResource
+
+Resources are identified by "URL" 
+  => /api/customers GET | POST | DELETE | UPDATE
+
+In Graphql apps are built based on "Models" Which are objects
+
+What ever language we have to think in terms of Objects
+...................................................................................
+Graphql Schema Language                         Programming Langauge
+....................................................................................
+  Schema                                        class or Object
+
+  Customer                                      class Customer {} | let Customer={}
+
+Object shape is described by "Schema". 
+
+Schema is nothing but "Plan"
+
+In Graphql context, the "Problem domain"  is represented by "Schema language"
+....................................................................................
+			SDL - Schema Definition Language
+....................................................................................
+
+SDL Core concepts:
+..................
+
+1.Type System:
+...............
+   The Type system defines the platform and language independant data types which describe what data can be quried by client.
+
+
+Schema Type Systems =============================>Programming language Type System
+eg:
+   String           =============================>javascript -string
+
+    Int             ==============================>javascript -number
+
+Client                                        Server
+
+ Query ----|SDL-----send request --------    |SDL---Models--->Bizlogic(services|							 resolvers)-->Datasources
+
+					  |---->java,kotlin,scala,c#,python -jvm
+					  |---->js,typescript -node
+			SDL implementation|---->
+					  |---->
+					
+	
+How to start with SDL?
+
+we need to define type.
+
+syntax:
+ type TypeName{
+    field:Type
+ }
+
+IN SDL, there is root type, every type is dervied from the root type.
+
+type Schema {
+  query:Query
+  mutation:Mutation
+  subscription:Subscription
+}
+
+type Query{}
+
+type Mutation{}
+
+type Subscription{}
+
+type User {
+ id:Int
+ firstName:String
+ lastName:String
+ status:Boolean
+ points:Float
+}
+
+type Query { 
+ #apis
+ user:User
+}
+
+Client side 
+
+query {
+ user {
+  id
+  status
+ }
+}
+
+
+type Mutation { 
+ #apis
+ createUser(user:User):User
+ updateUser(id:ID,user:User):User
+}
+
+mutation CreateUser($user:User) {
+  createUser(user:$user){
+    id
+    status
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
