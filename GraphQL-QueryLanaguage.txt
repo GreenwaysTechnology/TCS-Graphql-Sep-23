@@ -708,6 +708,188 @@ fragment CountryFields on Country {
   name
   native
 }
+.....................................................................................				  Directives
+.....................................................................................
+Directives are built in functions which provides some utilities.
+
+Syntax:
+ @directiveName(params)
+
+Graphql supports two basic directives.
+@inlcude(if:boolean)
+@skip(if:boolean)
+
+ Theses directives are used to include or exclude fields conditionally
+
+@include(if:Boolean)
+   only include "this field" in the result if the arg is true
+@skip(if:Boolean)
+   exclude /skip "this field" in the result if the arg is true.
+
+Syntax:
+
+query GetProfileHeader{
+    getProfile($id:Int,$withFriends:Boolean=false) {
+	profile(id:$id) {
+	   id
+           name
+	   friends @include(if:$withFriends)
+	
+        }
+
+    }
+}
+
+eg:
+query LanguageInfo($code: ID! = "en", $rtl: Boolean! = false) {
+  language(code: $code) {
+    name
+    native @include(if: $rtl)
+  }
+}
+
+with skip
+query LanguageInfo($code: ID! = "en", $rtl: Boolean! = false) {
+  language(code: $code) {
+    name
+    native @skip(if: $rtl)
+  }
+}
+
+variables:
+{
+  "code": "en",
+  "rtl": true,
+}
+Response:
+
+  "data": {
+    "language": {
+      "name": "English",
+      "native": "English"
+    }
+  }
+}
+.....................................................................................
+				Mutations
+....................................................................................
+
+How to send payload(data) to Graphql api?
+
+CREATE,UPDATE,DELETE
+
+In REST 
+
+HTTP verb            Convention in Server
+
+POST                 save
+
+DELETE		     remove
+
+PUT                  update
+
+In GraphQL
+...........
+In Graphql there is only one end point , only one URL.
+
+HTTP Verb    Graphql Verb      Convention in server
+
+POST         mutation           save
+
+POST         mutation           update
+
+POST         mutation           remove
+
+POST         query              read
+
+POST         subscription       read + Streaming
+
+
+Testing:
+ 
+API url :
+
+ https://graphqlzero.almansi.me/api
+
+CREATE:
+
+mutation CreatePost($input: CreatePostInput!) {
+  createPost(input: $input) {
+    id
+    title
+    body
+  }
+}
+
+Query Variables:
+{
+  "input": {
+    "title": "Learn Graphql",
+    "body": "Graphql is one the of most powerfull api technology"
+  }
+}
+
+Response:
+{
+  "data": {
+    "createPost": {
+      "id": "101",
+      "title": "Learn Graphql",
+      "body": "Graphql is one the of most powerfull api technology"
+    }
+  }
+}
+...................................................................................
+UPDATE:
+.......
+mutation UpdatePost($updatePostId: ID!, $input: UpdatePostInput!) {
+  updatePost(id: $updatePostId, input: $input) {
+    id
+    title
+    body
+  }
+}
+
+Variables:
+{
+  "updatePostId": "1",
+  "input": {
+    "title": "Learn Graphql with Apollo"
+  }
+}
+
+Response:
+{
+  "data": {
+    "updatePost": {
+      "id": "1",
+      "title": "Learn Graphql with Apollo",
+      "body": "quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto"
+    }
+  }
+}
+....................................................................................
+DELETE:
+.......
+
+mutation RemovePost($deletePostId: ID!) {
+  deletePost(id: $deletePostId)
+}
+
+Variables:
+{
+  "deletePostId": "1"
+}
+
+Response:
+{
+  "data": {
+    "deletePost": true
+  }
+}
+
+
+
 
 
 
