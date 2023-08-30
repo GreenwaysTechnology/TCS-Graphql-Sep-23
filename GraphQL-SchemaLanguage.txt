@@ -120,12 +120,121 @@ mutation CreateUser($user:User) {
   }
 
 }
+....................................................................................
+				 Data types In SDL
+.....................................................................................
+
+1.Scallar Types
+   Scallar are like primitives types in the programming languages
+
+1.Int - 32 Bit Signed Integer
+2.String - UTF-8 
+3.Boolean - true or false
+4.Float - Signed Double
+5.ID - String but Serialized string - For unique identification
+
+2.Custom Types/Reference Types/ Object types
+ Similar to classes in object oriented languages like java,C++,C#
+
+type User {
+ id:Int
+ firstName:String
+ lastName:String
+ status:Boolean
+ points:Float
+}
+
+Object can have other Object Type:
+..................................
+  Like has a relationship / Dependency injection
+
+type Address { 
+ city:String
+ state:String
+ country:String
+}
+
+type User {
+ id:Int
+ firstName:String
+ lastName:String
+ status:Boolean
+ points:Float
+ address:Address
+}
+
+
+Client side 
+
+query {
+ user {
+  id
+  status
+  address  {
+    city
+  }
+ }
+}
+....................................................................................
+			Handling null and not null values
+....................................................................................
+
+Client query with data
+
+query {
+  user {
+    name    ------------------> response {name:'Subramanian'}
+  }
+}
+
+
+Client query without data
+
+query {
+  user {
+    name    ------------------> response {name:null}
+  }
+}
+
+Client is expecting that dont want to include null, if server null , i have to throw an exception.
+ =>Not null field
+
+Syntax:
+   fieldName:Type!
+
+! -Not Null
 
 
 
+type Address { 
+ city:String
+ state:String
+ country:String
+}
 
+type User {
+ id:Int!
+ firstName:String!
+ lastName:String!
+ status:Boolean
+ points:Float
+ address:Address
+}
 
+Here, id ,firstName,lastName cant be null, if there is null value, the server will throw exception.
+....................................................................................
+				Collections - List of similar values
+....................................................................................
+The field may have more values
 
+ fieldName:[DataType]
+
+Data Type could be scallar or Object Type
+
+eg:
+  products:[Product]
+  users:[User]
+  skills:[String]
 
 
 
