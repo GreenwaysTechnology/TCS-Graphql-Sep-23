@@ -235,6 +235,853 @@ eg:
   products:[Product]
   users:[User]
   skills:[String]
+.....................................................................................
+				Advanced Types
+.....................................................................................
+
+=>Mutation
+=>Subscription
+=>Input
+=>Enum
+=>Union
+=>Interface
+
+
+Mutation:
+ For Add,update,delete operations
+
+type Mutation {
+  createUser(id:ID,firstName:String,lastName:String,age:Int):User
+  updatUser(id:ID,user:User):User
+  removeUser(id:ID):User
+}
+...................................................................................
+                         Input
+...................................................................................
+Input type are special object type that allow you to provide hierachial data as args to fields
+
+type Mutation {
+  createUser(id:ID,firstName:String,lastName:String,age:Int):User
+}
+
+In the above code you can we have passed indivual fields, which is not going to be good.
+
+Can i user type
+
+type User {
+ id:ID
+ firstName:String
+ lastName:String
+ age:Int
+}
+type Mutation {
+  createUser(user:User):User
+}
+
+Instead of passing User type, graphql offers special object type input
+
+input CreateUserInput {
+ id:ID
+ firstName:String
+ lastName:String
+ age:Int
+}
+
+type Mutation {
+  createUser(user:CreateUserInput):User
+}
+.....................................................................................
+			 Enums
+.....................................................................................
+
+An Enum is similar to scalar type, but its leagal values are defined in the schema
+
+enum Gender {
+ MALE
+ FEMALE
+ THIRD
+}
+
+type Query {
+ gender:Gender
+}
+.....................................................................................				Union and Interfaces
+.....................................................................................
+Unions and interfaces are abstract Graphql types that enables a schema field to return one of the multiple object types.
+
+union Media = Image | Video
+
+type Query {
+  getMedia:[Media]
+}
+
+Note:
+  Union type must be only object types not scalar or input types.
+....................................................................................
+			Interfaces
+.....................................................................................
+
+Interface Represents common fields that multiple objects can include
+
+interface Book {
+  title:String
+  author:String
+}
+type GraphQLBook implements Book {
+  title:String
+  author:String 
+  X:String  
+}
+
+type StoryBook implements Book {
+  title:String
+  author:String 
+  Y:String  
+}
+
+Client Side:
+
+Syntax : 1
+query GetBooks {
+   books {
+      author
+      title
+    }
+}
+Here it returns all data,
+
+What if i want Graphqlbook and storybook details 
+
+query GetBooks {
+  
+   __typename
+   title
+   author
+   ....on GraphQLBook {
+      X
+   }
+   ....on StoryBook {
+      Y
+   }
+}
+...................................................................................
+			   Custom Scalar types
+...................................................................................
+Graphql provides custom scalar types. 
+I want Date,Time
+
+How to define custom scallar?
+
+scalar Date
+
+type User {
+  dob:Date
+}
+
+Here Date is custom scalar but this data type is represented / logic of this type is provided through "Server side code".
+....................................................................................
+			 Graphql Application dev
+...................................................................................
+
+You can write code in any language.
+
+Java:
+1.graphql-java
+2.SpringBoot with Graphql
+3.DGS Framework-Netflix
+etc...
+
+Javascript:
+
+1.graphql-js.js
+The JavaScript reference implementation for GraphQL, a query language for APIs created by Facebook.
+
+
+2.Apollo
+  It is platform for building enterprise graphql apps
+  The core of Apollo framework is written on the graphql.js and express.js
+
+Graphql application can be built using two arch
+ 1.monolith arch
+ 2.Microservices arch.
+
+Apollo Core concepts:
+  SuperGraph:
+      Collection of small graphs called subgraph
+      A unified network of your organizations microservices and their datasources
+      -All Composed into a single distributed API.
+
+  SubGraph:
+      It represents a single Graph application
+
+  Graph OS:
+     It is cloud platform which hosts supergraph and router
+
+   Router :
+      It is compostion api , clients will communicate only Router
+     Router internally stiches the schema for data reterival.
+
+Components of Apollo:
+.....................
+1.Apollo Server : node js server written in express.js
+2.Schema defintions - SDL
+3.Resolvers - Schema Implementations like queries,mutations,subscription
+4.Data Sources -  Database,rest api, any other apis.
+
+Apollo code can be written in "javascript or typescript".
+.....................................................................................
+				Apollo Project setup
+....................................................................................
+
+Required Softwares:
+
+1.node.js latest version
+2.vscode
+
+
+Steps:
+1.create project folder
+E:\session\TCS\GraphQL>mkdir apollo-gettingstarted
+2.create package.json file
+E:\session\TCS\GraphQL>cd apollo-gettingstarted
+
+E:\session\TCS\GraphQL\apollo-gettingstarted>npm init --yes
+Wrote to E:\session\TCS\GraphQL\apollo-gettingstarted\package.json:
+
+{
+  "name": "apollo-gettingstarted",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
+3.lanuch code window
+E:\session\TCS\GraphQL\apollo-gettingstarted>code .
+4.create source dir
+E:\session\TCS\GraphQL\apollo-gettingstarted>mkdir src
+
+5.install apollo server dependencies
+
+npm install @apollo/server graphql
+
+6.install type script dependencies
+
+npm i --save-dev typescript @types/node
+
+package.json
+"dependencies": {
+    "@apollo/server": "^4.9.3",
+    "graphql": "^16.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.7",
+    "typescript": "^5.2.2"
+  }
+
+7.configure ts config file
+tsconfig.json
+{
+    "compilerOptions": {
+        "rootDirs": [
+            "src"
+        ],
+        "outDir": "dist",
+        "lib": [
+            "ES2020"
+        ],
+        "target": "ES2020",
+        "module": "ESNext",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "types": [
+            "node"
+        ]
+    }
+}
+
+script:
+In order to compile and run dev server in watch mode.
+
+npm install --save-dev tsc-watch
+
+package.json
+  "scripts": {
+    "start": "tsc-watch --onSuccess \"node ./dist/index.js"
+  },
+
+Lets verify settings:
+
+src/index.ts
+ console.log('Hello GraphQL')
+.....................................................................................
+
+SDL implementation:
+
+Steps:
+
+1.Define schema
+2.Write biz logic for schema - Resolver
+3.Start Apollo Server
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//1.Define Schema 
+const typeDefs = `
+ #Define api
+ type Query{
+   hello:String    
+ } 
+
+`
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        hello() {
+            return "Hello Graphql"
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Client code:
+query HelloQuery {
+  hello
+}
+
+Response:
+{
+  "data": {
+    "hello": "Hello Graphql"
+  }
+}
+.....................................................................................	
+				Descriptions(docStrings)
+.....................................................................................
+Graphql schema definitions supports markdown enabled documentation strings called "descriptions"
+
+This helps consumers of your graph discover fields and learn how to use them.
+
+""Comments"" => single line comment
+"""
+ Multi line comment => Multi line
+"""
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//1.Define Schema 
+const typeDefs = `
+ #Define api
+ type Query{
+   """
+    This is hello api which returns Hello Grapql Message
+   """
+   hello:String    
+ } 
+
+`
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        hello() {
+            return "Hello Graphql"
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+....................................................................................
+			  Default Resolvers
+....................................................................................
+
+if you define query in the schema defintion, if you dont define resolver, the Apollo provides default Resolver which always returns null.
+
+Eg:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//1.Define Schema 
+const typeDefs = `
+ #Define api
+ type Query{
+   hello:String    
+ } 
+
+`
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+       
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client Side:
+query HelloQuery {
+  hello
+}
+
+Response:
+{
+  "data": {
+    "hello": null
+  }
+}
+.....................................................................................
+			  Multiple apis
+....................................................................................
+
+You can multiple apis in the schema 
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//1.Define Schema 
+const typeDefs = `
+ #Define api
+ type Query{
+    add:Int
+    multiply:Int
+    div:Int
+} 
+
+`
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        add() {
+            return 10 + 10
+        },
+        multiply() {
+            return 10 * 10
+        },
+        div() {
+            return 10 / 2
+        }
+
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client Side:
+query Add {
+  add
+}
+
+query Multi {
+  multiply
+}
+
+query Div {
+  div
+}
+
+Response:
+{
+  "data": {
+    "add": 20
+  }
+}
+.....................................................................................
+			 Object Types And Queries
+.....................................................................................
+
+Eg:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//1.Define Schema 
+const typeDefs = `
+
+type User {
+    id:ID
+    firstName:String
+    lastName:String
+    age:Int
+    points:Float
+    status:Boolean
+}
+
+type Query{
+   user:User
+} 
+
+`
+//Mock user data
+const user = {
+    id: 1,
+    firstName: 'Subramanian',
+    lastName: 'Murugan',
+    age: 43,
+    points: 1000,
+    status: true
+}
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        user() {
+            return user 
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client Side:
+query UserInfo {
+  user {
+    id
+    firstName
+    lastName    
+    status
+    points
+  }
+}
+Response:
+
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "firstName": "Subramanian",
+      "lastName": "Murugan",
+      "status": true,
+      "points": 1000
+    }
+  }
+}
+....................................................................................
+				Collections
+....................................................................................
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//1.Define Schema 
+const typeDefs = `
+
+type User {
+    id:ID
+    firstName:String
+    lastName:String
+    age:Int
+    points:Float
+    status:Boolean
+}
+
+type Query {
+   users:[User]
+} 
+
+`
+//Mock user data
+const users = [{
+    id: 1,
+    firstName: 'Subramanian',
+    lastName: 'Murugan',
+    age: 43,
+    points: 1000,
+    status: true
+},
+{
+    id: 2,
+    firstName: 'Geetha',
+    lastName: 'Subramanian',
+    age: 40,
+    points: 5000,
+    status: true
+},
+{
+    id: 3,
+    firstName: 'Ram',
+    lastName: 'M',
+    age: 30,
+    points: 5000,
+    status: false
+}
+
+]
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        users() {
+            return users
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Client:
+query UserInfo {
+  users {
+    id
+    firstName
+    lastName    
+    status
+    points
+  }
+}
+
+Response:
+{
+  "data": {
+    "users": [
+      {
+        "id": "1",
+        "firstName": "Subramanian",
+        "lastName": "Murugan",
+        "status": true,
+        "points": 1000
+      },
+      {
+        "id": "2",
+        "firstName": "Geetha",
+        "lastName": "Subramanian",
+        "status": true,
+        "points": 5000
+      },
+      {
+        "id": "3",
+        "firstName": "Ram",
+        "lastName": "M",
+        "status": false,
+        "points": 5000
+      }
+    ]
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
