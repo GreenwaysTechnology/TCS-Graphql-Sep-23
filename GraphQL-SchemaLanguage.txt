@@ -941,6 +941,1103 @@ Response:
     ]
   }
 }
+...................................................................................
+			 Null and Not Null
+...................................................................................
+How to handle null and not null?
+
+Without Null: with data
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type User {
+    id:ID
+    firstName:String
+    lastName:String
+    age:Int
+    points:Float
+    status:Boolean
+}
+
+type Query {
+    user:User
+}
+
+
+`
+const resolvers = {
+    Query: {
+        user() {
+            return {
+                id: 1,
+                firstName: 'Subramanian',
+                lastName: 'Murugan',
+                age: 43,
+                points: 100,
+                status: false
+            }
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Query:
+query UserInfo {
+  user {
+    id
+    firstName
+  }
+}
+
+Response:
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "firstName": "Subramanian"
+    }
+  }
+}
+.................................................................................
+
+With null:
+
+const resolvers = {
+    Query: {
+        user() {
+               return null;
+        }
+    },
+
+}
+Response:
+{
+  "data": {
+    "user": null
+  }
+}
+i dont want null, my api must always return data.
+
+type Query {
+    user:User!
+}
+Here "user" api must return data, if you return null 
+
+Server will throw "Exception"
+
+{
+  "data": {},
+  "errors": [
+    {
+      "message": "Cannot return null for non-nullable field Query.user.",
+      "locations": [
+        {
+          "line": 2,
+          "column": 3
+        }
+      ],
+      "path": [
+        "user"
+      ],
+}
+...................................................................................
+				Fields not Null.
+
+Fields not Null:
+
+type User {
+    id:ID!
+    firstName:String!
+    lastName:String!
+    age:Int
+    points:Float
+    status:Boolean
+}
+
+const resolvers = {
+    Query: {
+        user() {
+            return {
+                firstName: 'Subramanian',
+                lastName: 'Murugan',
+                age: 43,
+                points: 100,
+                status: false
+            }
+        }
+    },
+
+}
+Here "id" is missing, so the server will throw exception
+
+{
+  "data": {},
+  "errors": [
+    {
+      "message": "Cannot return null for non-nullable field User.id.",
+      "locations": [
+        {
+          "line": 3,
+          "column": 5
+        }
+      ]
+}
+...................................................................................
+			 Collections and null
+....................................................................................
+
+Syntax:
+  products:[Product!]
+  products:[Product]!
+  products:[Product!]!
+
+
+products:[Product!]:
+...................
+products:null -valid
+products:[] - empty array -valid
+products:[{id:1}] - arrays with data - valid
+products:[null]
+
+eg:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type User {
+    id:ID!
+    firstName:String!
+    lastName:String!
+    age:Int
+    points:Float
+    status:Boolean
+}
+
+type Query {
+    users:[User!]
+}
+
+
+`
+const resolvers = {
+    Query: {
+        users() {
+            // return [{
+            //     id:1,
+            //     firstName: 'Subramanian',
+            //     lastName: 'Murugan',
+            //     age: 43,
+            //     points: 100,
+            //     status: false
+            // }]
+           // return null;
+           return [null]
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Query:
+query UserInfo {
+  users {
+    id
+    firstName
+    lastName
+    status
+    points
+  }
+}
+
+Response:
+
+  "data": {
+    "users": null
+  },
+  "errors": [
+    {
+      "message": "Cannot return null for non-nullable field Query.users.",
+      "locations": [
+        {
+          "line": 2,
+          "column": 3
+        }
+      ]
+}
+.....................................................................................
+
+products:[String]!
+
+Empty Array:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type Query {
+    skills:[String]!
+}
+`
+const resolvers = {
+    Query: {
+        skills() {
+            return []
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Client Side:
+query Skills {
+  skills
+}
+
+Response:
+{
+  "data": {
+    "skills": []
+  }
+}
+
+With data:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type Query {
+    skills:[String]!
+}
+`
+const resolvers = {
+    Query: {
+        skills() {
+            
+            return ['Graphql']
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client Side:
+query Skills {
+  skills
+}
+
+Response:
+{
+  "data": {
+    "skills": [
+      "Graphql"
+    ]
+  }
+}
+
+With Null
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type Query {
+    skills:[String]!
+}
+`
+const resolvers = {
+    Query: {
+        skills() {
+               return null 
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Client Side:
+query Skills {
+  skills
+}
+
+
+Response:
+{
+  "data": {},
+  "errors": [
+    {
+      "message": "Cannot return null for non-nullable field Query.skills.",
+      "locations": [
+        {
+          "line": 2,
+          "column": 3
+        }
+      ],
+      "path": [
+        "skills"
+      ],
+}
+
+
+Inside Null: vaild
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type Query {
+    skills:[String]!
+}
+`
+const resolvers = {
+    Query: {
+        skills() {
+               return [null]
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client Side:
+query Skills {
+  skills
+}
+
+Response:
+{
+  "data": {
+    "skills": [
+      null
+    ]
+  }
+}
+.....................................................................................
+
+skills:[String!]!
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type Query {
+    skills:[String!]!
+}
+`
+const resolvers = {
+    Query: {
+        skills() {
+              //return [null]
+              //return null
+              return []
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client side:
+
+query Skills {
+  skills
+}
+
+Response:
+{
+  "data": {},
+  "errors": [
+    {
+      "message": "Cannot return null for non-nullable field Query.skills.",
+      "locations": [
+        {
+          "line": 2,
+          "column": 3
+        }
+      ],
+      "path": [
+        "skills"
+      ],
+}
+.....................................................................................
+			Handling Args and Parameters
+.....................................................................................
+
+Handling args and parameters inside resolver.
+
+Resolver functions takes four positional optional args.
+
+resolverfun(parent,args,contextValue,info){
+
+}
+
+"args" variable is going to hold parameters passed by clients.
+args value is going to be literal object
+
+How many parameters you can pass, all parameters are stored inside single literal object.
+
+Eg:
+Simple Arg:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type Query {
+   hello(name:String):String
+}
+`
+const resolvers = {
+    Query: {
+        hello(parent, args, ctx, info) {
+            return `Hello ${args.name}`;
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Client Side:
+query HelloQueryParameter($name: String) {
+  hello(name: $name)
+}
+
+Variables:
+{
+  "name": "Ram"
+}
+Response:
+{
+  "data": {
+    "hello": "Hello Ram"
+  }
+}
+...................................................................................
+			 Not Null with args and return type
+..................................................................................
+
+Eg:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+ 
+type Query {
+   hello(name:String!):String!
+}
+`
+const resolvers = {
+    Query: {
+        hello(parent, args, ctx, info) {
+            return `Hello ${args.name}`;
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Clientside:
+query HelloQueryParameter($name: String!) {
+  hello(name: $name)
+}
+
+Variable:
+{
+  "name": null
+}
+You will get Exception.
+
+{
+  "data": {},
+  "errors": [
+    {
+      "message": "Variable \"$name\" of non-null type \"String!\" must not be null.",
+      "location"
+}
+....................................................................................
+			How to handle complex args
+..................................................................................
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+
+type User {
+    id:ID!
+    firstName:String
+    lastName:String
+    age:Int
+    points:Float
+    status:Boolean
+}
+
+type Query {
+   users:[User!]!
+   user(id:ID!):User
+}
+`
+const users = [{
+    id: 1,
+    firstName: 'Subramanian',
+    lastName: 'Murugan',
+    age: 43,
+    points: 1000,
+    status: true
+},
+{
+    id: 2,
+    firstName: 'Geetha',
+    lastName: 'Subramanian',
+    age: 40,
+    points: 5000,
+    status: true
+},
+{
+    id: 3,
+    firstName: 'Ram',
+    lastName: 'M',
+    age: 30,
+    points: 5000,
+    status: false
+}
+
+]
+
+
+
+const resolvers = {
+    Query: {
+        users() {
+            return users;
+        },
+        user(_, args) {
+            return users.find(user => {
+                //+ operator is used to convert string to number
+                return user.id === +args.id
+            })
+        }
+    },
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client side:
+query UsersById($userId: ID!) {
+  user(id: $userId) {
+    id
+    firstName
+    lastName
+    age
+    status
+    points
+  }
+}
+
+Variables:
+{
+  
+  "userId": 1
+}
+Response:
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "firstName": "Subramanian",
+      "lastName": "Murugan",
+      "age": 43,
+      "status": true,
+      "points": 1000
+    }
+  }
+}
+.....................................................................................
+			  Input type
+....................................................................................
+
+user(id:ID!,status:Boolean,age:Int):User
+
+ Here we need to pass three fields 
+
+Instead we can simlify the fields:
+
+input UserInput {
+    id:ID!
+    status:Boolean
+    age:Int
+}
+
+type Query {
+   users:[User!]!
+   #user(id:ID!,status:Boolean,age:Int):User
+   user(userInput:UserInput!):User
+}
+
+
+eg:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+
+type User {
+    id:ID!
+    firstName:String
+    lastName:String
+    age:Int
+    points:Float
+    status:Boolean
+}
+
+input UserInput {
+    id:ID!
+    status:Boolean
+    age:Int
+}
+
+type Query {
+   users:[User!]!
+   #user(id:ID!,status:Boolean,age:Int):User
+   user(userInput:UserInput!):User
+}
+`
+const users = [{
+    id: 1,
+    firstName: 'Subramanian',
+    lastName: 'Murugan',
+    age: 43,
+    points: 1000,
+    status: true
+},
+{
+    id: 2,
+    firstName: 'Geetha',
+    lastName: 'Subramanian',
+    age: 40,
+    points: 5000,
+    status: true
+},
+{
+    id: 3,
+    firstName: 'Ram',
+    lastName: 'M',
+    age: 30,
+    points: 5000,
+    status: false
+}
+
+]
+
+
+
+const resolvers = {
+    Query: {
+        users() {
+            return users;
+        },
+        user(_, args) {
+            console.log(args)
+            return users.find(user => {
+                //+ operator is used to convert string to number
+                return user.id === +args.userInput.id
+            })
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+query UsersById($userId: ID!, $status: Boolean = true, $age: Int = 18) {
+  user(id: $userId, status: $status, age: $age) {
+    id
+    firstName
+    lastName
+    age
+    status
+    points
+  }
+}
+
+Response:
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "firstName": "Subramanian",
+      "lastName": "Murugan",
+      "age": 43,
+      "status": true,
+      "points": 1000
+    }
+  }
+}
+
+What if there is more no of fields to need to be passed as arg.
+
+Thats where input type is coming into picture.
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+const typeDefs = `
+
+type User {
+    id:ID!
+    firstName:String
+    lastName:String
+    age:Int
+    points:Float
+    status:Boolean
+}
+
+input UserInput {
+    id:ID!
+    status:Boolean
+    age:Int
+}
+
+type Query {
+   users:[User!]!
+   #user(id:ID!,status:Boolean,age:Int):User
+   user(userInput:UserInput!):User
+}
+`
+const users = [{
+    id: 1,
+    firstName: 'Subramanian',
+    lastName: 'Murugan',
+    age: 43,
+    points: 1000,
+    status: true
+},
+{
+    id: 2,
+    firstName: 'Geetha',
+    lastName: 'Subramanian',
+    age: 40,
+    points: 5000,
+    status: true
+},
+{
+    id: 3,
+    firstName: 'Ram',
+    lastName: 'M',
+    age: 30,
+    points: 5000,
+    status: false
+}
+
+]
+
+
+
+const resolvers = {
+    Query: {
+        users() {
+            return users;
+        },
+        user(_, args) {
+            console.log(args)
+            return users.find(user => {
+                //+ operator is used to convert string to number
+                return user.id === +args.userInput.id
+            })
+        }
+    },
+
+}
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Client side:
+
+query UsersById($userInput: UserInput!) {
+  user(userInput: $userInput) {
+    id
+    firstName
+    lastName
+    age
+    status
+    points
+  }
+}
+Variables:
+
+{
+  
+  "userInput": {
+     "id": 1,
+     "age":34,
+     "status":true
+
+  }
+Response:
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "firstName": "Subramanian",
+      "lastName": "Murugan",
+      "age": 43,
+      "status": true,
+      "points": 1000
+    }
+  }
+}
+Console output:
+{ userInput: { id: '1', status: true, age: 34 } }
+
+
+
+.....................................................................................
+			      Nested Fields
+.....................................................................................
+
+We can return nested  fields in two ways
+
+1.As part of the object
+2.Two different Objects and stiching together.
+
+
+1.As part of the object
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//1.Define Schema 
+const typeDefs = `
+
+type Address {
+    city:String
+}
+
+type User {
+    id:ID!
+    firstName:String
+    lastName:String
+    age:Int
+    points:Float
+    status:Boolean
+    address:Address
+}
+
+ #Define api
+ type Query{
+    user:User
+ } 
+
+`
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        user() {
+            return {
+                id: 1,
+                firstName: 'Subramanian',
+                lastName: 'Murugan',
+                status: true,
+                age: 43,
+                points: 120.7,
+                //nested field
+                address: {
+                    city: 'Coimbatore'
+                }
+
+            }
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client side:
+query User {
+  user {
+    id
+    firstName
+    lastName
+    status
+    points
+    age
+    address {
+      city
+    }
+  }
+}
+
+Response:
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "firstName": "Subramanian",
+      "lastName": "Murugan",
+      "status": true,
+      "points": 120.7,
+      "age": 43,
+      "address": {
+        "city": "Coimbatore"
+      }
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

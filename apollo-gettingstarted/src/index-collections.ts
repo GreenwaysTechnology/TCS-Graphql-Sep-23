@@ -4,43 +4,53 @@ import { startStandaloneServer } from '@apollo/server/standalone'
 //1.Define Schema 
 const typeDefs = `
 
-type Address {
-    city:String
-}
-
 type User {
-    id:ID!
+    id:ID
     firstName:String
     lastName:String
     age:Int
     points:Float
     status:Boolean
-    address:Address
 }
 
- #Define api
- type Query{
-    user:User
- } 
+type Query {
+   users:[User]
+} 
 
 `
+//Mock user data
+const users = [{
+    id: 1,
+    firstName: 'Subramanian',
+    lastName: 'Murugan',
+    age: 43,
+    points: 1000,
+    status: true
+},
+{
+    id: 2,
+    firstName: 'Geetha',
+    lastName: 'Subramanian',
+    age: 40,
+    points: 5000,
+    status: true
+},
+{
+    id: 3,
+    firstName: 'Ram',
+    lastName: 'M',
+    age: 30,
+    points: 5000,
+    status: false
+}
+
+]
+
 //2.Biz logic for hello Query : Resolvers
 const resolvers = {
     Query: {
-        user() {
-            return {
-                id: 1,
-                firstName: 'Subramanian',
-                lastName: 'Murugan',
-                status: true,
-                age: 43,
-                points: 120.7,
-                //nested field
-                address: {
-                    city: 'Coimbatore'
-                }
-
-            }
+        users() {
+            return users
         }
     },
     //Mutation
@@ -59,22 +69,3 @@ const { url } = await startStandaloneServer(server, {
     }
 })
 console.log(`Apollo Server is Ready ${url}`)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
