@@ -2635,6 +2635,574 @@ Response:
     }
   }
 }
+....................................................................................
+			 Interface Type
+....................................................................................
+
+An interface specifies a set of "fields" that mutiple object types can include.
+
+interface Book{
+  title:String!
+  author:Author!
+}
+
+type TextBook implements Book{
+  title:String!
+  author:Author!
+  courses:[Course!]!
+}
+type ColoringBook implements Book{
+  title:String!
+  author:Author!
+  colors:[String!]!
+}
+
+type Query {
+  books:[Book!]! #Can Include TextBook or any Book Objects
+}
+
+Resolvers:
+const resolvers = {
+  Book: {
+    __resolveType(book,ctx,info){
+	if(book.courses){
+	    return 'TextBook'
+        }
+	if(book.courses){
+	    return 'ColoringBook'
+        }	 
+	return null
+     }
+  }
+
+}
+
+Final Code:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+
+//1.Define Schema 
+const typeDefs = `
+interface Book {
+    title:String!
+    author:Author!
+}
+type Author{
+   name:String
+}
+type Course {
+   name:String    
+}
+type Textbook implements Book {
+    title:String!
+    author:Author!
+    courses:Course
+}
+type ColoringBook implements Book {
+    title:String!
+    author:Author!
+    colors:[String!]!
+}
+ 
+type Query {
+    books:[Book!]!
+}
+`
+//Mock data f
+const BOOKS = [{
+    title: 'Apollo Graphql in Action',
+    author: {
+        name: 'Subramanian'
+    },
+    courses: {
+        name: 'IT'
+    }
+},
+{
+    title: 'Birds Drawing for Kids',
+    author: {
+        name: 'John'
+    },
+    colors: ['Green', 'Yellow']
+}
+]
+
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+
+    Query: {
+        books() {
+            return BOOKS;
+        }
+    },
+    Book: {
+        __resolveType(book, ctx, info) {
+            if(book.courses){
+                return 'Textbook' //Type must be String
+            }
+            if(book.colors){
+                return 'ColoringBook'
+            }
+            return null
+        }
+    }
+
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Client Side:
+query Books {
+  books {
+    __typename
+    title
+    author {
+      name
+    }
+    ... on Textbook {
+      courses {
+        name
+      }
+    }
+    ... on ColoringBook {
+      colors
+    }
+  }
+}
+
+Response:
+{
+  "data": {
+    "books": [
+      {
+        "__typename": "Textbook",
+        "title": "Apollo Graphql in Action",
+        "author": {
+          "name": "Subramanian"
+        },
+        "courses": {
+          "name": "IT"
+        }
+      },
+      {
+        "__typename": "ColoringBook",
+        "title": "Birds Drawing for Kids",
+        "author": {
+          "name": "John"
+        },
+        "colors": [
+          "Green",
+          "Yellow"
+        ]
+      }
+    ]
+  }
+}
+.....................................................................................
+			  Context and Context Values
+.....................................................................................
+
+What is Context?
+
+Context is object is used to share "Information and Request Details" throughout application.
+
+During a Graphql Operation, you can share data throught your server's resolvers and plugins by creating an object named called contextValue.
+
+We can pass some usefull information via context like authentication tokens, datasources,global api keys.
+
+
+The context function:
+ The context is a function which is part of startStandaloneServer.
+ This function must return async value /Object Via "Promise".
+
+The object which we return from "context function "  can be access inside resolver.
+
+eg:
+  resolverFun(parent,args,contextValue,info){
+	contextValue.somedata
+  }
+
+Simple Context :
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//Context Type:Type script syntax to have strong typing
+interface MyContext {
+    greet: String
+}
+
+//1.Define Schema 
+const typeDefs = `
+  type Query {
+    hello:String
+  }
+`
+
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+
+    Query: {
+        hello(parent, args, contextValue, info) {
+            return `${contextValue.greet}`
+        }
+    }
+
+
+}
+
+
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer<MyContext>({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    },
+    context: async (obj) => {
+        return {
+            greet: 'Welcome'    //return Promise.resolve({greet:'Welcome'})
+        }
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+.....................................................................................
+			  Data Sources & Context
+....................................................................................
+
+DataSources:
+ The place where data is stored.
+
+Data sources
+1.InMemory Datasource - Arrays
+2.Databases 
+3.Third Party apis
+  -Rest api
+  -Another graphql api
+  -Grpc API
+
+As of now we have written biz logic inside resolvers, which is not recommended, we have to write biz logic outside resolvers called "Services"/Datasources
+
+1.InMemory Data Sources
+
+Steps:
+1.write service class
+src/services/comments.service.ts
+import { COMMENTS } from "../mock-data/comments.js";
+
+//DataSource class//Service class 
+export class CommentService {
+    constructor() { }
+    //all biz apis : CURD operations
+    findAll() {
+        return COMMENTS
+    }
+    findById(id: number) {
+        return COMMENTS.find(comment => {
+            console.log(comment.id , id)
+            return comment.id === id
+        })
+    }
+    //save
+    save(comment) {
+        //save logic
+        return comment
+    }
+    //update
+
+    //delete
+}
+2.Mock data preparation: Please refer code repo.
+
+Note: YOu have to implement three logic : save,update,delete
+
+
+3.Define schema,resolvers,context
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { CommentService } from "./services/Comments.service.js"
+// import { COMMENTS } from "./mock-data/comments.js"
+
+//Context Type:Type script syntax to have strong typing
+interface MyContext {
+    dataSources: {
+        commentsAPI: CommentService
+    }
+}
+
+//1.Define Schema 
+const typeDefs = `
+
+type Comment{ 
+    postId:Int
+    id:ID
+    name:String
+    email:String
+    body:String
+}
+
+type Query {
+    comments:[Comment]!
+    comment(id:ID):Comment
+}
+
+`
+
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        comments(parent, args, context, info) {
+            //ACCESS data source /service object
+            return context.dataSources.commentsAPI.findAll()
+        },
+        comment(parent, args, context, info) {
+            return context.dataSources.commentsAPI.findById(+args.id);
+        }
+    }
+
+
+}
+
+
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer<MyContext>({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    },
+    context: async (obj) => {
+        return {
+            dataSources: {
+                commentsAPI: new CommentService()
+            }
+        }
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Client side:
+
+query COMMENTS {
+  comments {
+    postId
+    name
+    id
+    email
+    body
+  }
+}
+
+Response:
+{
+  "data": {
+    "comments": [
+      {
+        "postId": 1,
+        "name": "id labore ex et quam laborum",
+        "id": "1",
+        "email": "Eliseo@gardner.biz",
+        "body": "laudantium enim quasi est quidem magnam voluptate ipsam eos\ntempora quo necessitatibus\ndolor quam autem quasi\nreiciendis et nam sapiente accusantium"
+      },
+      {
+        "postId": 1,
+        "name": "quo vero reiciendis velit similique earum",
+        "id": "2",
+        "email": "Jayne_Kuhic@sydney.com",
+        "body": "est natus enim nihil est dolore omnis voluptatem numquam\net omnis occaecati quod ullam at\nvoluptatem error expedita pariatur\nnihil sint nostrum voluptatem reiciendis et"
+      },
+]
+
+query CommentsById($id:ID) {
+  comment(id:$id) {
+    postId
+    name
+    id
+    email
+    body
+  }
+}
+Variables:
+{
+  "id":300
+}
+Response:
+{
+  "data": {
+    "comment": {
+      "postId": 60,
+      "name": "in dolore iusto ex molestias vero",
+      "id": "300",
+      "email": "Letha@liliane.ca",
+      "body": "dolorem fugit quidem animi quas quisquam reprehenderit\noccaecati et dolor laborum nemo sed quas unde deleniti\nfacere eligendi placeat aliquid aspernatur commodi sunt impedit\nneque corrupti alias molestiae magni tempora"
+    }
+  }
+}
+
+.....................................................................................
+			  Mutation - CREATE,UPDATE,DELETE
+
+Note: You have to implement biz logic for create,update,delete.
+
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { CommentService } from "./services/Comments.service.js"
+// import { COMMENTS } from "./mock-data/comments.js"
+
+//Context Type:Type script syntax to have strong typing
+interface MyContext {
+    dataSources: {
+        commentsAPI: CommentService
+    }
+}
+
+//1.Define Schema 
+const typeDefs = `
+
+type Comment{ 
+    postId:Int
+    id:ID
+    name:String
+    email:String
+    body:String
+}
+
+type Query {
+    comments:[Comment]!
+    comment(id:ID):Comment
+}
+
+input InputCommentCreate {
+    postId:Int
+    id:ID
+    name:String
+    email:String
+    body:String
+}
+input InputCommentUpdate {
+    postId:Int
+    id:ID
+    name:String
+    email:String
+    body:String
+}
+type Mutation {
+    addComment(comment:InputCommentCreate):Comment
+    updateComment(id:ID!,comment:InputCommentUpdate):Comment
+    removeComment(id:ID!):Boolean
+}
+
+`
+
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        comments(parent, args, context, info) {
+            //ACCESS data source /service object
+            return context.dataSources.commentsAPI.findAll()
+        },
+        comment(parent, args, context, info) {
+            return context.dataSources.commentsAPI.findById(+args.id);
+        }
+    },
+    Mutation: {
+        addComment(parent, args, context, info) {
+            return context.dataSources.commentsAPI.save(args.comment)
+        },
+        updateComment(parent, args, context, info) {
+            return context.dataSources.commentsAPI.update(+args.id, args.comment)
+        },
+        removeComment(parent, args, context, info) {
+            return context.dataSources.commentsAPI.remove(+args.id)
+        }
+    }
+
+
+}
+
+
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer<MyContext>({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    },
+    context: async (obj) => {
+        return {
+            dataSources: {
+                commentsAPI: new CommentService()
+            }
+        }
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+ClientSide:
+mutation CreateComment($comment: InputCommentCreate) {
+  addComment(comment: $comment) {
+    id
+    postId
+    name
+    email
+    body
+  }
+}
+
+Variables:
+{
+  "comment": {
+     "id":1000,
+     "postId":100,
+     "name":"Learn Graphql",
+     "email":"test@gmail.com",
+     "body":"aldfjaldkfjdsaflkjsa",     
+  }
+}
+Response:
+{
+  "data": {
+    "addComment": {
+      "id": "1000",
+      "postId": 100,
+      "name": "Learn Graphql",
+      "email": "test@gmail.com",
+      "body": "aldfjaldkfjdsaflkjsa"
+    }
+  }
+}
+
 
 
 
