@@ -3202,16 +3202,800 @@ Response:
     }
   }
 }
+....................................................................................
+			 REST API as Datasource
+....................................................................................
+
+In order to communitate REST End Points , we can use "RESTDataSource".
+
+The RESTDataSource class simplifies fetching data from REST API and helps handle caching,request deduplication,and errors while resolving operations.
+
+steps:
+1.you need to install rest datasource
+npm install @apollo/datasource-rest
 
 
+Service:
+import { RESTDataSource } from "@apollo/datasource-rest";
+
+interface Post {
+    userId: number
+    id: number
+    title: string
+    body: string
+}
+export class PostService extends RESTDataSource {
+    override baseURL = `https://jsonplaceholder.typicode.com`
+    //api
+    public async getPosts(): Promise<Post[]> {
+        return this.get<Post[]>(`posts`)
+    }
+    public async getPostById(id: number): Promise<Post> {
+        return this.get<Post>(`posts/${id}`)
+    }
+    //save
+    public async createPost(post: Post): Promise<Post> {
+        return await this.post<Post>(`posts`, { body: post })
+    }
+    //update
+    public async updatePost(id: number, post: Post): Promise<Post> {
+        return await this.put<Post>(`posts/${id}`, { body: post })
+    }
+    //DELETE 
+    public async removePost(id: number) {
+        console.log(id)
+        return await this.delete(`posts/${id}`) 
+    }
+}
+..
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { PostService } from "./services/Post.service.js"
 
 
+//Context Type:Type script syntax to have strong typing
+interface MyContext {
+    dataSources: {
+        postAPI: PostService
+    }
+}
+
+//1.Define Schema 
+const typeDefs = `
+
+type Post{
+    userId:Int!
+    id:ID!
+    title:String
+    body:String
+}
+
+type Query{
+    posts:[Post!]!
+    post(id:ID!):Post!
+}
+input PostCreateInput {
+    userId:Int!
+    title:String
+    body:String
+}
+input PostUpdateInput {
+    title:String
+    body:String
+}
+
+type PostResponse{
+    userId:Int
+    id:ID
+    title:String
+    body:String
+}
+
+type Mutation {
+    createPost(post:PostCreateInput):Post
+    updatePost(id:ID!,post:PostUpdateInput):Post
+    removePost(id:ID!):PostResponse
+}
+
+`
 
 
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        async posts(parent, args, ctx, info) {
+            return ctx.dataSources.postAPI.getPosts()
+        },
+        async post(parent, args, ctx, info) {
+            return ctx.dataSources.postAPI.getPostById(+args.id)
+        }
+    },
+    Mutation: {
+        async createPost(parent, args, ctx, info) {
+            return ctx.dataSources.postAPI.createPost(args.post)
+        },
+        async updatePost(parent, args, ctx, info) {
+            return ctx.dataSources.postAPI.updatePost(+args.id, args.post)
+        },
+        async removePost(parent, args, ctx, info) {
+            return ctx.dataSources.postAPI.removePost(+args.id)
+        }
+    }
 
 
+}
 
 
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer<MyContext>({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    },
+    context: async (obj) => {
+        return {
+            dataSources: {
+                postAPI: new PostService()
+            }
+        }
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client side:
+Query:
+query Posts {
+  posts {
+    userId
+    id
+    title
+    body
+  }
+}
+
+query PostsByid($postId: ID!) {
+  post(id: $postId) {
+    userId
+    id
+    title
+    body
+  }
+}
+
+Mutation:
+mutation CREATEPOST($post: PostCreateInput) {
+  createPost(post: $post) {
+    id
+    userId
+    title
+    body
+  }
+}
+Variables:
+{
+  "post":{
+    "userId": 1,
+    "title":"learn apollo",
+    "body" :"Apollo Graphql"    
+  }
+}
+
+Update:
+mutation UPDATEPOST($updatePostId: ID!, $post: PostUpdateInput){
+   updatePost(id: $updatePostId,post: $post) {
+     id
+     title
+     body
+   }
+}
+
+
+Remove:
+mutation REMOVEPOST($removePostId: ID!){
+  removePost(id: $removePostId) {
+    title
+    body
+  }
+}
+{
+  "updatePostId": 1,
+  "post": {
+    "title":"TEST",
+    "body": "HOW ARE YOU"
+  }
+}
+Variables
+{
+  "removePostId": 3
+}
+.....................................................................................	
+			   Database Interaction
+.....................................................................................
+
+ORM Frameworks:
+
+Java Developers use "Hibernate" ORM framework
+
+What about ORM framework for node.js developers?
+
+1.Prisma
+2.Sequelize
+3.TypeOrm
+4.Knex
+etc...
+
+Prisma:
+  Prisma is more declarative ORM framework for node.js and typescript based apps.
+  Prisma can talk to sql databases and also no sql databases like mongodb.
+
+Prisma tools set:
+1.Prisma client   
+   Auto generated and type safe query build for node and typescript.
+
+2.Prisma migrate
+    Migration system for Prisma
+
+3.Prisma Studio 
+   GUI tool to view and edit in your database.
+
+How does prisma work?
+
+Prisma schema :
+  Every app uses a tool from prisma toolki starts with Prisma schema file.
+
+Prisma Schema defins the "application models" in an intuitive data modeling language.
+It also contains the connection to a database and defines a generator.
+
+
+datasources db {
+  provider = "mysql"
+  url = env("DATABASE_URL")
+}
+generator client {
+  provider ="prisma-client"
+}
+
+//model configuration
+
+model Post {
+ id Int @id @default(autoincrement())
+ title String
+}
+.....................................................................................
+Prisma Setup:
+............
+
+1.You need to select what database you are going to connect.
+  Postgresql,MySql,Mariadb,Oracle,DB2,Mongo db etc.....
+
+2.I am going to use "in Memory database" - You dont need to install any database.
+  but this is not for production.
+   "sqlite" - Most popular inMemory database..
+ 
+
+Steps:
+
+install prisma dependency:
+
+npm install prisma 
+
+npx prisma init --datasource-provider sqlite
+
+✔ Your Prisma schema was created at prisma/schema.prisma
+  You can now open it in your favorite editor.
+
+Next steps:
+1. Set the DATABASE_URL in the .env file to point to your existing database. If your database has no tables yet, read https://pris.ly/d/getting-started
+2. Run prisma db pull to turn your database schema into a Prisma schema.
+3. Run prisma generate to generate the Prisma Client. You can then start querying your database.
+
+More information in our documentation:
+https://pris.ly/d/getting-started
+
+
+2.Declare Model
+ Model represents database table.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+//Model declaration
+model User{
+  id Int @id @default(autoincrement())
+  name String?
+  email String @unique
+  createdAt DateTime @default(now())
+}
+
+3.Database Migration
+  Convert this schema into tables and connecting database...
+
+
+npx prisma migrate dev
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": SQLite database "dev.db" at "file:./dev.db"
+
+SQLite database dev.db created at file:./dev.db
+
+√ Enter a name for the new migration: ...
+Applying migration `20230911131001_`
+
+The following migration(s) have been created and applied from new schema changes:
+
+migrations/
+  └─ 20230911131001_/
+    └─ migration.sql
+
+Your database is now in sync with your schema.
+
+Running generate... (Use --skip-generate to skip the generators)
+
+added 2 packages, and audited 161 packages in 5s
+
+9 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+✔ Generated Prisma Client (v5.2.0) to .\node_modules\@prisma\client in 83ms
+
+migration.sql
+-- CreateTable
+CREATE TABLE "User" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT,
+    "email" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+.....................................................................................
+
+4.Setup Prisma Client lib:
+
+npm i @prisma/client
+
+src/database.ts
+import { PrismaClient } from "@prisma/client";
+export const prisma =  new PrismaClient();
+
+
+CURD Operations:
+................
+prisma.modelName.api
+
+eg:
+prisma.user.findMany({}) - Read All
+prisma.user.findUnique({
+ where: {
+   email:'test@gmail.com'
+ }
+}) - find By 
+
+prisma.user.create({
+  data: {
+    email:'test@gmail.com'
+    name:'test'
+  }
+}) - create method
+
+prisma.user.update({
+ where: {
+   id:1
+ },
+ data: {
+   email:''
+ }
+})
+
+prisma.user.delete({
+  where: {
+    id:1
+  }
+})
+.....................................................................................
+
+
+CURD Operations: Read and Save
+
+src/services/User.service.ts
+
+import { prisma } from "../database.js"
+
+export class User {
+    id: number
+    name: string
+    email: string
+    createdAt: string
+}
+
+export class UserService {
+
+    public findAll() {
+        return prisma.user.findMany({})
+    }
+    public save(user: User) {
+        return prisma.user.create({
+            data: {
+                email: user.email,
+                name: user.name,
+                createdAt: new Date()
+            }
+        })
+    }
+}
+
+src/index.ts
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { UserService } from "./services/User.service.js"
+
+
+//Context Type:Type script syntax to have strong typing
+interface MyContext {
+    dataSources: {
+        userAPI: UserService
+    }
+}
+
+//1.Define Schema 
+const typeDefs = `
+type User {
+    id:Int
+    name:String
+    email:String
+    createdAt:String
+}
+type Query {
+    users:[User]
+}
+input UserCreateInput {
+    name:String
+    email:String
+}
+
+type Mutation {
+    createUser(user:UserCreateInput):User
+}
+
+`
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        users(parent, args, context, info) {
+            return context.dataSources.userAPI.findAll()
+        }
+    },
+    Mutation: {
+
+        async createUser(parent, args, context, info) {
+            return context.dataSources.userAPI.save(args.user)
+        }
+
+    }
+
+
+}
+
+
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer<MyContext>({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    },
+    context: async (obj) => {
+        return {
+            dataSources: {
+                userAPI: new UserService()
+            }
+        }
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+..................................................................................
+
+FindBy id,update,delete:
+........................
+
+src/services/User.service.ts
+
+
+import { prisma } from "../database.js"
+
+export class User {
+    id: number
+    name: string
+    email: string
+    createdAt: string
+}
+
+export class UserService {
+
+    public findAll() {
+        return prisma.user.findMany({})
+    }
+
+    public findById(id: number) {
+        return prisma.user.findUnique({
+            where: {
+                id: id
+            }
+        })
+    }
+    public save(user: User) {
+        return prisma.user.create({
+            data: {
+                email: user.email,
+                name: user.name,
+                createdAt: new Date()
+            }
+        })
+    }
+    public update(id: number, user: User) {
+        return prisma.user.update({
+            where: {
+                id: id
+            },
+            data: {
+                email: user.email
+            }
+        })
+    }
+    public remove(id: number) {
+        return prisma.user.delete({
+            where: {
+                id: id
+            }
+        })
+    }
+
+}
+
+
+src/index.ts
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { UserService } from "./services/User.service.js"
+
+
+//Context Type:Type script syntax to have strong typing
+interface MyContext {
+    dataSources: {
+        userAPI: UserService
+    }
+}
+
+//1.Define Schema 
+const typeDefs = `
+type User {
+    id:Int
+    name:String
+    email:String
+    createdAt:String
+}
+type Query {
+    users:[User]
+    user(id:ID):User
+}
+input UserCreateInput {
+    name:String
+    email:String
+}
+input UserUpdateInput {
+    name:String
+    email:String
+}
+type Mutation {
+    createUser(user:UserCreateInput):User
+    updateUser(id:ID,user:UserUpdateInput):User
+    removeUser(id:ID):User
+    
+}
+
+`
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        users(parent, args, context, info) {
+            return context.dataSources.userAPI.findAll()
+        },
+        user(parent, args, context, info) {
+            return context.dataSources.userAPI.findById(+args.id)
+        }
+
+    },
+    Mutation: {
+        async createUser(parent, args, context, info) {
+            return context.dataSources.userAPI.save(args.user)
+        },
+        async updateUser(parent, args, context, info) {
+            return context.dataSources.userAPI.update(+args.id, args.user)
+        },
+        async removeUser(parent, args, context, info) {
+            return context.dataSources.userAPI.remove(+args.id)
+        }
+    }
+
+
+}
+
+
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer<MyContext>({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    },
+    context: async (obj) => {
+        return {
+            dataSources: {
+                userAPI: new UserService()
+            }
+        }
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+
+Testing : Client 
+
+CREATE:
+mutation AddUSER($user: UserCreateInput) {
+  createUser(user: $user) {
+    id
+    name
+    email
+    createdAt
+  }
+}
+
+Variable:
+{
+  "user": {
+    "name":"Murugan",
+    "email":"murugan@gmail.com"
+  }
+}
+Response:
+{
+  "data": {
+    "createUser": {
+      "id": 4,
+      "name": "Murugan",
+      "email": "murugan@gmail.com",
+      "createdAt": "1694440575052"
+    }
+  }
+}
+
+Get All
+query Users {
+  users {
+    id
+    name
+    email
+    createdAt
+  }
+}
+
+Response:
+{
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "name": "Subramnaian",
+        "email": "sasubramaian_md@hotmail.com",
+        "createdAt": "1694439551274"
+      },
+      {
+        "id": 2,
+        "name": "Geetha",
+        "email": "subugee@gmail.com",
+        "createdAt": "1694439879402"
+      }
+    ]
+  }
+}
+
+User byId:
+query UserById($userId: ID) {
+  user(id: $userId) {
+    id
+    email
+    name
+    createdAt
+  }
+}
+Variables:
+{
+  "userId": 3
+}
+Response:
+{
+  "data": {
+    "user": {
+      "id": 3,
+      "email": "murugan@gmail.com",
+      "name": "Murugan",
+      "createdAt": "1694439903269"
+    }
+  }
+}
+
+UPDATE:
+mutation UPDATUSER($id: ID, $user: UserUpdateInput) {
+  updateUser(id: $id, user: $user) {
+    id
+    name
+    email
+    createdAt
+  }
+}
+Variables:
+{
+  "id":3,
+  "user": {
+     "email": "murugan222@hotmail.com"
+  }
+}
+Response:
+{
+  "data": {
+    "updateUser": {
+      "id": 3,
+      "name": "Murugan",
+      "email": "murugan222@hotmail.com",
+      "createdAt": "1694439903269"
+    }
+  }
+}
+
+Remove:
+mutation RemoveUser($removeUserId: ID) {
+  removeUser(id: $removeUserId) {
+    id
+  }
+}
+Variables:
+{
+  "removeUserId": 4
+}
+Response:
+{
+  "data": {
+    "removeUser": {
+      "id": 4
+    }
+  }
+}
 
 
 

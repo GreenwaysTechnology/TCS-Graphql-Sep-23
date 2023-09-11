@@ -1,74 +1,64 @@
 import { ApolloServer } from "@apollo/server"
 import { startStandaloneServer } from '@apollo/server/standalone'
-import { CommentService } from "./services/Comments.service.js"
-// import { COMMENTS } from "./mock-data/comments.js"
+import { UserService } from "./services/User.service.js"
+
 
 //Context Type:Type script syntax to have strong typing
 interface MyContext {
     dataSources: {
-        commentsAPI: CommentService
+        userAPI: UserService
     }
 }
 
 //1.Define Schema 
 const typeDefs = `
-
-type Comment{ 
-    postId:Int
-    id:ID
+type User {
+    id:Int
     name:String
     email:String
-    body:String
+    createdAt:String
 }
-
 type Query {
-    comments:[Comment]!
-    comment(id:ID):Comment
+    users:[User]
+    user(id:ID):User
 }
-
-input InputCommentCreate {
-    postId:Int
-    id:ID
+input UserCreateInput {
     name:String
     email:String
-    body:String
 }
-input InputCommentUpdate {
-    postId:Int
-    id:ID
+input UserUpdateInput {
     name:String
     email:String
-    body:String
 }
 type Mutation {
-    addComment(comment:InputCommentCreate):Comment
-    updateComment(id:ID!,comment:InputCommentUpdate):Comment
-    removeComment(id:ID!):Boolean
+    createUser(user:UserCreateInput):User
+    updateUser(id:ID,user:UserUpdateInput):User
+    removeUser(id:ID):User
+    
 }
 
 `
 
-
 //2.Biz logic for hello Query : Resolvers
 const resolvers = {
     Query: {
-        comments(parent, args, context, info) {
-            //ACCESS data source /service object
-            return context.dataSources.commentsAPI.findAll()
+        users(parent, args, context, info) {
+            return context.dataSources.userAPI.findAll()
         },
-        comment(parent, args, context, info) {
-            return context.dataSources.commentsAPI.findById(+args.id);
+        user(parent, args, context, info) {
+            return context.dataSources.userAPI.findById(+args.id)
         }
+
     },
     Mutation: {
-        addComment(parent, args, context, info) {
-            return context.dataSources.commentsAPI.save(args.comment)
+        async createUser(parent, args, context, info) {
+            return context.dataSources.userAPI.save(args.user)
         },
-        updateComment(parent, args, context, info) {
-            return context.dataSources.commentsAPI.update(+args.id, args.comment)
+        async updateUser(parent, args, context, info) {
+            return context.dataSources.userAPI.update(+args.id, args.user)
         },
-        removeComment(parent, args, context, info) {
-            return context.dataSources.commentsAPI.remove(+args.id)
+        async removeUser(parent, args, context, info) {
+            return context.dataSources.userAPI.remove(+args.id)
         }
     }
 
@@ -90,7 +80,7 @@ const { url } = await startStandaloneServer(server, {
     context: async (obj) => {
         return {
             dataSources: {
-                commentsAPI: new CommentService()
+                userAPI: new UserService()
             }
         }
     }

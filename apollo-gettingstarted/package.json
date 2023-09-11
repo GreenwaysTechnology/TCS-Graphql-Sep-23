@@ -12,7 +12,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@apollo/datasource-rest": "^6.1.0",
     "@apollo/server": "^4.9.3",
+    "@prisma/client": "^5.2.0",
     "graphql": "^16.8.0"
   },
   "devDependencies": {
