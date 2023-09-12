@@ -1,88 +1,105 @@
 import { ApolloServer } from "@apollo/server"
 import { startStandaloneServer } from '@apollo/server/standalone'
-import { UserService } from "./services/User.service.js"
-
-
-//Context Type:Type script syntax to have strong typing
-interface MyContext {
-    dataSources: {
-        userAPI: UserService
-    }
-}
+import { mapSchema, MapperKind, getDirective } from '@graphql-tools/utils'
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import { defaultFieldResolver } from 'graphql'
 
 //1.Define Schema 
 const typeDefs = `
+
 type User {
-    id:Int
-    name:String
-    email:String
-    createdAt:String
+    id:ID!
+    name:String @uppercase
+    email:String    
 }
+
+#Directive Declarations
+directive  @uppercase on FIELD_DEFINITION
+
 type Query {
     users:[User]
-    user(id:ID):User
-}
-input UserCreateInput {
-    name:String
-    email:String
-}
-input UserUpdateInput {
-    name:String
-    email:String
-}
-type Mutation {
-    createUser(user:UserCreateInput):User
-    updateUser(id:ID,user:UserUpdateInput):User
-    removeUser(id:ID):User
-    
 }
 
 `
+const USERS = [{
+    id: 1,
+    name: 'subramaian',
+    email: 'subu@gmail.com'
+},
+{
+    id: 2,
+    name: 'murugan',
+    email: 'murugan@gmail.com'
+},
+{
+    id: 3,
+    name: 'geetha',
+    email: 'geetha@gmail.com',
+},
+
+]
+
+//Directive logic 
+
+function uppercaseDirectiveTransformer(schema, directiveName) {
+    return mapSchema(schema, {
+        //Logic
+        [MapperKind.OBJECT_FIELD]: (filedConfig) => {
+            //Check whether this field has the specificed directive 
+            const uppercaseDirective = getDirective(schema, filedConfig, directiveName)
+                ?.[0];
+            if (uppercaseDirective) {
+                //Get fields orginal resolver
+                const { resolve = defaultFieldResolver } = filedConfig
+                //Replace the original Resolver with a function that calls
+                //the orginal resolver, then converts its result to upper case
+                filedConfig.resolve = async function (source, args, ctx, info) {
+                    const result = await resolve(source, args, ctx, info)
+                    if (typeof result === 'string') {
+                        //actual logic
+                        return result.toUpperCase()
+                    }
+                    return result
+                }
+            };
+            return filedConfig;
+
+        }
+    })
+}
+
+
+
 
 //2.Biz logic for hello Query : Resolvers
 const resolvers = {
     Query: {
-        users(parent, args, context, info) {
-            return context.dataSources.userAPI.findAll()
-        },
-        user(parent, args, context, info) {
-            return context.dataSources.userAPI.findById(+args.id)
+        users() {
+            return USERS
         }
-
     },
-    Mutation: {
-        async createUser(parent, args, context, info) {
-            return context.dataSources.userAPI.save(args.user)
-        },
-        async updateUser(parent, args, context, info) {
-            return context.dataSources.userAPI.update(+args.id, args.user)
-        },
-        async removeUser(parent, args, context, info) {
-            return context.dataSources.userAPI.remove(+args.id)
-        }
-    }
-
-
+    //Mutation
+    //Subscription
 }
 
+//schema creation
+let schema = makeExecutableSchema({
+    typeDefs,
+    resolvers
+})
+
+//attach Directive Existing Schema
+schema = uppercaseDirectiveTransformer(schema, 'uppercase')
 
 //3.We need to deploy the schema and bind with resolver 
-const server = new ApolloServer<MyContext>({
-    typeDefs: typeDefs,
-    resolvers: resolvers
+const server = new ApolloServer({
+    schema
 })
 
 //4.Start web server (Express.js)
 const { url } = await startStandaloneServer(server, {
     listen: {
         port: 4000
-    },
-    context: async (obj) => {
-        return {
-            dataSources: {
-                userAPI: new UserService()
-            }
-        }
     }
 })
 console.log(`Apollo Server is Ready ${url}`)

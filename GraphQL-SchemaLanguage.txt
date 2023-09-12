@@ -3996,22 +3996,512 @@ Response:
     }
   }
 }
+.....................................................................................
+			  Custom Scalar
+.....................................................................................
+
+The Graphql specification includes many built in scalars such ID,String,Boolean,Float,Int.
+
+Apart from you can create your own custom types as well.
+
+Inside Schema:
+..............
+
+scalar TypeName
+scalar Date
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+
+//1.Define Schema 
+const typeDefs = `
+
+#Custom data type
+scalar Date
+
+type User {
+    id:ID!
+    name:String
+    email:String
+    date:Date
+}
+type Query {
+    users:[User]
+}
+
+`
+const USERS = [{
+    id: 1,
+    name: 'A',
+    email: 'a@gmail.com',
+    date: new Date()
+},
+{
+    id: 2,
+    name: 'B',
+    email: 'b@gmail.com',
+    date: new Date()
+},
+{
+    id: 3,
+    name: 'C',
+    email: 'c@gmail.com',
+    date: new Date()
+},
+
+]
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        users(parent, args, ctx, info) {
+            return USERS
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+How to resolve/give meaning to the data type?
+
+Steps:
+1.Call GraphQLScalarType constructor function which returns object
+
+const dateScalar = new GraphQLScalarType({
+    name: 'Date',
+    description: 'Date Date Type'
+})
+
+
+2.We need to attach in the resolver's configuration.
+
+const resolvers = {
+    Date:dateScalar,
+    Query: {
+        users(parent, args, ctx, info) {
+            return USERS
+        }
+    },
+ }
+
+3. Add Methods into GraphQLScalarType
+
+serialize:
+   A function which converts the custom scalar type to value that can be seralized as a response by the graphql Server
+
+parseValue:
+  A function that convert the value received as a variable in the graphql query to the custom scalar type.
+
+parseLiteral:
+  A function that converts a literal received in the Graphql Query to the custom Scalar type.
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { GraphQLScalarType, Kind } from "graphql"
+
+const dateScalar = new GraphQLScalarType({
+    name: 'Date',
+    description: 'Date  Type',
+    serialize(value: Date) {
+        //Logic to treate that data type
+        console.log('seralize',value)
+        return value.getTime()
+    },
+    parseValue(value: Date) {
+        console.log('parseValue',value)
+        //convert incoming integer to Date
+        return new Date(value)
+    },
+    parseLiteral(ast) {
+        console.log('parseLiteral',ast)
+
+        if (ast.kind == Kind.INT) {
+            return new Date(parseInt(ast.value, 10))
+        }
+        return null
+    }
+
+})
+
+
+//1.Define Schema 
+const typeDefs = `
+
+#Custom data type
+scalar Date
+
+type User {
+    id:ID!
+    name:String
+    email:String
+    date:Date
+}
+type Query {
+    users:[User]
+}
+
+`
+const USERS = [{
+    id: 1,
+    name: 'A',
+    email: 'a@gmail.com',
+    date: new Date()
+},
+{
+    id: 2,
+    name: 'B',
+    email: 'b@gmail.com',
+    date: new Date()
+},
+{
+    id: 3,
+    name: 'C',
+    email: 'c@gmail.com',
+    date: new Date()
+},
+
+]
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Date: dateScalar,
+    Query: {
+        users(parent, args, ctx, info) {
+            return USERS
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+.....................................................................................
+		 Custom Scalar for Restricting integers to Odd values
+.....................................................................................
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { GraphQLError, GraphQLScalarType, Kind } from "graphql"
+
+function oddValue(value:number ){
+    if (typeof value === 'number' && Number.isInteger(value) && value % 2 !== 0) {
+        return value
+    }
+    throw new GraphQLError('Provided Integer is not ODD integer', {
+        extensions: { code: 'BAD_USER_INPUT' }
+    })
+}
+const oddScalar = new GraphQLScalarType({
+    name: 'Odd',
+    description: 'Odd Custom data Type',
+    parseValue(value: number) {
+        if (typeof value === 'number' && Number.isInteger(value) && value % 2 !== 0) {
+            return value
+        }
+        throw new GraphQLError('Provided Integer is not ODD integer', {
+            extensions: { code: 'BAD_USER_INPUT' }
+        })
+    },
+    serialize(value: number) {
+        if (typeof value === 'number' && Number.isInteger(value) && value % 2 !== 0) {
+            return value
+        }
+        throw new GraphQLError('Provided Integer is not ODD integer', {
+            extensions: { code: 'BAD_USER_INPUT' }
+        })
+    },
+    parseLiteral(ast){
+        if(ast.kind === Kind.INT){
+            return oddValue(parseInt(ast.value,10))
+        }
+        throw new GraphQLError('Provided Integer is not ODD integer', {
+            extensions: { code: 'BAD_USER_INPUT' }
+        })
+    }
+
+})
+
+
+//1.Define Schema 
+const typeDefs = `
+ scalar Odd
+
+ type Query {
+    getOdd(odd:Odd!):Odd!
+ }
+
+`
+
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Odd: oddScalar,
+    Query: {
+        getOdd(parent,args,ctx,info){
+            return args.odd
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client side:
+query Query($odd: Odd!) {
+  getOdd(odd: $odd)
+}
+Variables:
+
+{
+  "odd": 6
+}
+
+Response:
+{
+  "data": {},
+  "errors": [
+    {
+      "message": "Variable \"$odd\" got invalid value 6; Provided Integer is not ODD integer",
+      "locations": [
+        {
+          "line": 1,
+          "column": 13
+        }
+      ],
+      "extensions": {
+        "code": "BAD_USER_INPUT"
+}
+
+Variables:
+{
+  "odd": 3
+}
+response:
+{
+  "data": {
+    "getOdd": 3
+  }
+}
+...................................................................................
+			 Third party Custom Scalar types:
+...................................................................................
+
+There is one popular custom Apollographql custom scalar is "graphql-type-json"
+....................................................................................
+			Custom Direcitves
+....................................................................................
+
+What is Directive?
+  Directive is a code or logic to be injected into the schema.
+  A Directive decorates part of a Graphql Schema or Operations with additional configuration which is similar to "Annotations" in java.
+
+Directive Syntax:
+
+type MyType{
+  field:String @directive(params:paramValue)
+}
+
+Graphql offers lot of built in directives, apart from even we can build our own directives as well- Custom Directives.
+
+How to create Custom Directives?
+
+  Apollo Server does not provide direct implementation.
+  Apollo Server does not provide built in support for custom directives that transform schema.
+
+@graphql/tools package offers features to create and integrate custom directives.
+
+Apollo 4 offers graphql tools basic features as part of core lib, if you need custom directive features that tool must be installed.
+
+npm install @graphql-tools/schema @graphql-tools/utils
+
+Use Case:
+ Field Upper Case Directive, if there is string fields , i want to show as upper cases
+
+Directive Syntax:
+
+directive @NameofTheDirective on FIELD_DEFINITION
+eg:
+directive @uppercase on FIELD_DEFINITION
+
+Usage:
+type User {
+ name:String @uppercase
+}
+type Query { 
+  hello:String @uppercase
+}
+
+
+code:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { mapSchema, MapperKind, getDirective } from '@graphql-tools/utils'
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import { defaultFieldResolver } from 'graphql'
+
+//1.Define Schema 
+const typeDefs = `
+
+type User {
+    id:ID!
+    name:String @uppercase
+    email:String    
+}
+
+#Directive Declarations
+directive  @uppercase on FIELD_DEFINITION
+
+type Query {
+    users:[User]
+}
+
+`
+const USERS = [{
+    id: 1,
+    name: 'subramaian',
+    email: 'subu@gmail.com'
+},
+{
+    id: 2,
+    name: 'murugan',
+    email: 'murugan@gmail.com'
+},
+{
+    id: 3,
+    name: 'geetha',
+    email: 'geetha@gmail.com',
+},
+
+]
+
+//Directive logic 
+
+function uppercaseDirectiveTransformer(schema, directiveName) {
+    return mapSchema(schema, {
+        //Logic
+        [MapperKind.OBJECT_FIELD]: (filedConfig) => {
+            //Check whether this field has the specificed directive 
+            const uppercaseDirective = getDirective(schema, filedConfig, directiveName)
+                ?.[0];
+            if (uppercaseDirective) {
+                //Get fields orginal resolver
+                const { resolve = defaultFieldResolver } = filedConfig
+                //Replace the original Resolver with a function that calls
+                //the orginal resolver, then converts its result to upper case
+                filedConfig.resolve = async function (source, args, ctx, info) {
+                    const result = await resolve(source, args, ctx, info)
+                    if (typeof result === 'string') {
+                        //actual logic
+                        return result.toUpperCase()
+                    }
+                    return result
+                }
+            };
+            return filedConfig;
+
+        }
+    })
+}
 
 
 
 
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        users() {
+            return USERS
+        }
+    },
+    //Mutation
+    //Subscription
+}
+
+//schema creation
+let schema = makeExecutableSchema({
+    typeDefs,
+    resolvers
+})
+
+//attach Directive Existing Schema
+schema = uppercaseDirectiveTransformer(schema, 'uppercase')
+
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    schema
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
 
 
-
-
-
-
-
-
-
-
-
-
+Client side:
+query Users {
+  users {
+    name
+    id
+    email
+  }
+}
+Response:
+{
+  "data": {
+    "users": [
+      {
+        "name": "SUBRAMAIAN",
+        "id": "1",
+        "email": "subu@gmail.com"
+      },
+      {
+        "name": "MURUGAN",
+        "id": "2",
+        "email": "murugan@gmail.com"
+      },
+      {
+        "name": "GEETHA",
+        "id": "3",
+        "email": "geetha@gmail.com"
+      }
+    ]
+  }
+}
 
 
 
