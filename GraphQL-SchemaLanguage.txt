@@ -4502,24 +4502,422 @@ Response:
     ]
   }
 }
+.....................................................................................
+		  Schema Definitions into a separate File
+.....................................................................................
+
+Your-App
+  |
+  src
+   |
+   index.ts
+ schema.graphql
+
+...
+eg:
+schema.graphql
+
+type Query {
+    hello:String
+}
+
+src/index.ts
+    import { ApolloServer } from "@apollo/server"
+    import { startStandaloneServer } from '@apollo/server/standalone'
+    import { readFileSync } from "fs"
+
+    const typeDefs = readFileSync("./schema.graphql", { encoding: 'utf-8' })
+
+    //2.Biz logic for hello Query : Resolvers
+    const resolvers = {
+        Query: {
+            hello() {
+                return "Hello Graphql"
+            }
+        },
+        //Mutation
+        //Subscription
+    }
+    //3.We need to deploy the schema and bind with resolver 
+    const server = new ApolloServer({
+        typeDefs: typeDefs,
+        resolvers: resolvers
+    })
+
+    //4.Start web server (Express.js)
+    const { url } = await startStandaloneServer(server, {
+        listen: {
+            port: 4000
+        }
+    })
+    console.log(`Apollo Server is Ready ${url}`)
+
+.....................................................................................
+			 How to isloate resolvers
+....................................................................................
+
+src
+ |
+resolvers.js
+
+
+export const resolvers = {
+    Query: {
+        hello() {
+            return "Hello Graphql"
+        }
+    },
+    
+}
+
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { readFileSync } from "fs"
+import { resolvers } from "./resolvers.js"
 
 
 
+const typeDefs = readFileSync("./schema.graphql", { encoding: 'utf-8' })
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+....................................................................................
+			Multiple Resolvers
+....................................................................................
+
+src
+ |
+ resolver.hello.ts
+ resolver.hai.ts
 
 
+resolver.hello.ts
+export const helloResolver = {
+    Query: {
+        hello() {
+            return "Hello Graphql"
+        }
+    },
+    
+}
+
+resolver.hai.ts
+export const HaiResolver = {
+    Query: {
+        hai() {
+            return "Hai Graphql"
+        }
+    },
+    
+}
+
+index.ts
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { readFileSync } from "fs"
+import { helloResolver } from "./resolvers.hello.js"
+import { HaiResolver } from "./resolver.hai.js"
 
 
+const typeDefs = readFileSync("./schema.graphql", { encoding: 'utf-8' })
+
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: [helloResolver, HaiResolver]
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+....................................................................................
+			 Coding Standards
+...................................................................................
+
+Your-App
+  |
+  src
+   |
+   index.ts  //main file
+  users
+    |
+    users.resolver.ts
+    users.datasource.db.ts  
+    users.datasource.rest.ts
+  customers
+  posts
+|
+schema.graphql
 
 
+eg:
+
+Your-App
+ |
+schema.graphql
+type User {
+    id:ID!
+    name:String 
+    city:String
+}
+type Query {
+    hello:String
+    hai:String
+    users:[User!]!
+}
 
 
+Your-App
+ |
+src
+ |
+ users
+  |
+  users.resolver
+export const UserResolver = {
+    Query: {
+        users(parent, args, ctx, info) {
+            return ctx.dataSources.usersAPI.findAll()
+        }
+    }
+
+}
 
 
+Your-App
+ |
+src
+ |
+ users
+  |
+user.datasource.ts
+
+export class UserDataSource {
+    constructor() {
+
+    }
+    findAll() {
+        return [{ id: 1, name: 'subramanian', city: 'coimbatore' }]
+    }
+}
 
 
+Your-App
+ |
+src
+ |
+ index.ts
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { readFileSync } from "fs"
+import { UserResolver } from './users/users.resolver.js'
+import { UserDataSource } from "./users/users.datasource.js"
+
+const typeDefs = readFileSync("./schema.graphql", { encoding: 'utf-8' })
 
 
+//Context Type:Type script syntax to have strong typing
+interface MyContext {
+    dataSources: {
+        usersAPI: UserDataSource
+    }
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer<MyContext>({
+    typeDefs: typeDefs,
+    resolvers: [UserResolver]
+})
 
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    },
+    context: async (obj) => {
+        return {
+            dataSources: {
+                usersAPI: new UserDataSource()
+            }
+        }
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+.....................................................................................
+			 Subscriptions
+.....................................................................................
+
+Ways of sending data from one place called source to another place destination.
+
+1.Non Streaming way
+  -if you ask the data from source, it will return the entire data in one short
+ for eg, source returns list of customers which contains 100 records.
+ 100 records will be returned in one short.
+
+2.Streaming way
+  -if you ask the data from source, it will return one by one - step by step
+   record by record.
+  Client----asks---------->data
+    <---data...................
+    <---data
+   etc..
+
+How to enable Streaming?
+
+ There are number of ways to implement streaming 
+
+Reactive Programming:
+ It is one of the most popular pattern to stream data.
+ Way of sending and receiving data in async way with "Streaming"
+
+Streaming:
+  Data in flow  / Data flow
+
+Stream Processing: 
+  While you send and receive data, you can process the data like transformation,filtering,merging,mapping etc...
+ Provides resilience features such as retry,fallback....
+
+Subscriptions are similar to reactive Streams... if you want to stream data in graphql "Subscriptions Can be Used".
+
+ApolloGraphql does not provide direct implementation on subscription,we have to enable through different dependency....
+
+npm i graphql-ws ws @graphql-tools/schema
+  
+
+eg:
+import { ApolloServer } from '@apollo/server';
+import { expressMiddleware } from '@apollo/server/express4';
+import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
+import express from 'express';
+import { createServer } from 'http';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { WebSocketServer } from 'ws';
+import { useServer } from 'graphql-ws/lib/use/ws';
+import { PubSub } from 'graphql-subscriptions';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+
+const PORT = 4000;
+const pubsub = new PubSub();
+
+// Schema definition
+const typeDefs = `#graphql
+  type Query {
+    currentNumber: Int
+  }
+
+  type Subscription {
+    numberIncremented: Int
+  }
+`;
+
+// In the background, increment a number every second and notify subscribers when it changes.
+let currentNumber = 0;
+function incrementNumber() {
+  currentNumber++;
+  pubsub.publish('NUMBER_INCREMENTED', { numberIncremented: currentNumber });
+  setTimeout(incrementNumber, 1000);
+}
+
+// Resolver map
+const resolvers = {
+  Query: {
+    currentNumber() {
+      return currentNumber;
+    },
+  },
+  Subscription: {
+    numberIncremented: {
+      subscribe: () => pubsub.asyncIterator(['NUMBER_INCREMENTED']),
+    },
+  },
+};
+
+// Create schema, which will be used separately by ApolloServer and
+// the WebSocket server.
+const schema = makeExecutableSchema({ typeDefs, resolvers });
+
+// Create an Express app and HTTP server; we will attach the WebSocket
+// server and the ApolloServer to this HTTP server.
+const app = express();
+const httpServer = createServer(app);
+
+// Set up WebSocket server.
+const wsServer = new WebSocketServer({
+  server: httpServer,
+  path: '/graphql',
+});
+const serverCleanup = useServer({ schema }, wsServer);
+
+// Set up ApolloServer.
+const server = new ApolloServer({
+  schema,
+  plugins: [
+    // Proper shutdown for the HTTP server.
+    ApolloServerPluginDrainHttpServer({ httpServer }),
+
+    // Proper shutdown for the WebSocket server.
+    {
+      async serverWillStart() {
+        return {
+          async drainServer() {
+            await serverCleanup.dispose();
+          },
+        };
+      },
+    },
+  ],
+});
+
+await server.start();
+app.use('/graphql', cors<cors.CorsRequest>(), bodyParser.json(), expressMiddleware(server));
+
+// Now that our HTTP server is fully set up, actually listen.
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Query endpoint ready at http://localhost:${PORT}/graphql`);
+  console.log(`🚀 Subscription endpoint ready at ws://localhost:${PORT}/graphql`);
+});
+
+// Start incrementing
+incrementNumber();
+
+
+Testing:
+http://localhost:4000/graphql
+
+Client side:
+
+subscription {
+  numberIncremented
+}
+
+Response:
+
+{
+  "data": {
+    "numberIncremented": 236
+  }
+}
+
+// Response received at 19:37:12
+{
+  "data": {
+    "numberIncremented": 235
+}
+.....................................................................................
 
 
 

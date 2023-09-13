@@ -1,0 +1,10 @@
+type User {
+    id:ID!
+    name:String 
+    city:String
+}
+type Query {
+    hello:String
+    hai:String
+    users:[User!]!
+}

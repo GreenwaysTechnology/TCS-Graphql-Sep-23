@@ -1,105 +1,95 @@
-import { ApolloServer } from "@apollo/server"
-import { startStandaloneServer } from '@apollo/server/standalone'
-import { mapSchema, MapperKind, getDirective } from '@graphql-tools/utils'
-import { makeExecutableSchema } from '@graphql-tools/schema'
-import { defaultFieldResolver } from 'graphql'
+import { ApolloServer } from '@apollo/server';
+import { expressMiddleware } from '@apollo/server/express4';
+import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
+import express from 'express';
+import { createServer } from 'http';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { WebSocketServer } from 'ws';
+import { useServer } from 'graphql-ws/lib/use/ws';
+import { PubSub } from 'graphql-subscriptions';
+import bodyParser from 'body-parser';
+import cors from 'cors';
 
-//1.Define Schema 
-const typeDefs = `
+const PORT = 4000;
+const pubsub = new PubSub();
 
-type User {
-    id:ID!
-    name:String @uppercase
-    email:String    
+// Schema definition
+const typeDefs = `#graphql
+  type Query {
+    currentNumber: Int
+  }
+
+  type Subscription {
+    numberIncremented: Int
+  }
+`;
+
+// In the background, increment a number every second and notify subscribers when it changes.
+let currentNumber = 0;
+function incrementNumber() {
+  currentNumber++;
+  pubsub.publish('NUMBER_INCREMENTED', { numberIncremented: currentNumber });
+  setTimeout(incrementNumber, 1000);
 }
 
-#Directive Declarations
-directive  @uppercase on FIELD_DEFINITION
-
-type Query {
-    users:[User]
-}
-
-`
-const USERS = [{
-    id: 1,
-    name: 'subramaian',
-    email: 'subu@gmail.com'
-},
-{
-    id: 2,
-    name: 'murugan',
-    email: 'murugan@gmail.com'
-},
-{
-    id: 3,
-    name: 'geetha',
-    email: 'geetha@gmail.com',
-},
-
-]
-
-//Directive logic 
-
-function uppercaseDirectiveTransformer(schema, directiveName) {
-    return mapSchema(schema, {
-        //Logic
-        [MapperKind.OBJECT_FIELD]: (filedConfig) => {
-            //Check whether this field has the specificed directive 
-            const uppercaseDirective = getDirective(schema, filedConfig, directiveName)
-                ?.[0];
-            if (uppercaseDirective) {
-                //Get fields orginal resolver
-                const { resolve = defaultFieldResolver } = filedConfig
-                //Replace the original Resolver with a function that calls
-                //the orginal resolver, then converts its result to upper case
-                filedConfig.resolve = async function (source, args, ctx, info) {
-                    const result = await resolve(source, args, ctx, info)
-                    if (typeof result === 'string') {
-                        //actual logic
-                        return result.toUpperCase()
-                    }
-                    return result
-                }
-            };
-            return filedConfig;
-
-        }
-    })
-}
-
-
-
-
-//2.Biz logic for hello Query : Resolvers
+// Resolver map
 const resolvers = {
-    Query: {
-        users() {
-            return USERS
-        }
+  Query: {
+    currentNumber() {
+      return currentNumber;
     },
-    //Mutation
-    //Subscription
-}
+  },
+  Subscription: {
+    numberIncremented: {
+      subscribe: () => pubsub.asyncIterator(['NUMBER_INCREMENTED']),
+    },
+  },
+};
 
-//schema creation
-let schema = makeExecutableSchema({
-    typeDefs,
-    resolvers
-})
+// Create schema, which will be used separately by ApolloServer and
+// the WebSocket server.
+const schema = makeExecutableSchema({ typeDefs, resolvers });
 
-//attach Directive Existing Schema
-schema = uppercaseDirectiveTransformer(schema, 'uppercase')
+// Create an Express app and HTTP server; we will attach the WebSocket
+// server and the ApolloServer to this HTTP server.
+const app = express();
+const httpServer = createServer(app);
 
-//3.We need to deploy the schema and bind with resolver 
+// Set up WebSocket server.
+const wsServer = new WebSocketServer({
+  server: httpServer,
+  path: '/graphql',
+});
+const serverCleanup = useServer({ schema }, wsServer);
+
+// Set up ApolloServer.
 const server = new ApolloServer({
-    schema
-})
+  schema,
+  plugins: [
+    // Proper shutdown for the HTTP server.
+    ApolloServerPluginDrainHttpServer({ httpServer }),
 
-//4.Start web server (Express.js)
-const { url } = await startStandaloneServer(server, {
-    listen: {
-        port: 4000
-    }
-})
-console.log(`Apollo Server is Ready ${url}`)
+    // Proper shutdown for the WebSocket server.
+    {
+      async serverWillStart() {
+        return {
+          async drainServer() {
+            await serverCleanup.dispose();
+          },
+        };
+      },
+    },
+  ],
+});
+
+await server.start();
+app.use('/graphql', cors<cors.CorsRequest>(), bodyParser.json(), expressMiddleware(server));
+
+// Now that our HTTP server is fully set up, actually listen.
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Query endpoint ready at http://localhost:${PORT}/graphql`);
+  console.log(`🚀 Subscription endpoint ready at ws://localhost:${PORT}/graphql`);
+});
+
+// Start incrementing
+incrementNumber();
