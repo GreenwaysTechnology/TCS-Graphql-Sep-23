@@ -4918,28 +4918,556 @@ Response:
     "numberIncremented": 235
 }
 .....................................................................................
+			 Error Handling
+.....................................................................................
+
+How to throw errors from the resolvers?
+  Custom Biz logic errors.
+
+Error reports are transfered to client as json file
+
+{
+  "errors":[
+     "message": "",
+     "locations:[
+	{
+ 	  "line":1,
+	  "column":3
+	}
+      ],
+    "extensions": {
+	 "code": "GRAPHQL_VALIDATION_FAILED",
+         "stacktrace":[
+	        "complete error information"
+         ]
+     }
+  
+  ]
+}
+
+Built in Error Codes:
+1.BAD_USER_INPUT
+2.GRAPHQL_VALIDATION_FAILED
+3.BAD_REQUEST
+4.INTERNAL_SERVER_ERROR
+etc...
+
+Custom Error Code:
+.................
+
+import {GraphqQLError} from 'graphql'
+
+throw new GraphhQLError(message,{extensions:{
+    code:'YOUR_ERROR_CODE',custom extensions}
+}})
+
+eg:
+import { ApolloServer } from "@apollo/server"
+import { startStandaloneServer } from '@apollo/server/standalone'
+import { GraphQLError } from "graphql"
+
+//1.Define Schema 
+const typeDefs = `
+
+  type User {
+    id:ID!
+    name:String!    
+  }
+  type Query {
+    user(id:ID!):User
+  }
+`
+//2.Biz logic for hello Query : Resolvers
+const resolvers = {
+    Query: {
+        user(parent, args) {
+            //biz logic 
+            if (args.id < 1) {
+                throw new GraphQLError('Invalid argument Value', {
+                    extensions: {
+                        code: 'BAD_USER_INPUT'
+                    }
+                })
+            }
+            return {
+                id: 1,
+                name: 'Subramanian'
+            }
+
+        }
+    },
+    //Mutation
+    //Subscription
+}
+//3.We need to deploy the schema and bind with resolver 
+const server = new ApolloServer({
+    typeDefs: typeDefs,
+    resolvers: resolvers
+})
+
+//4.Start web server (Express.js)
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`Apollo Server is Ready ${url}`)
+
+Client Side:
+query UserBYid($userId: ID!) {
+  user(id: $userId) {
+     id
+     name
+  }
+}
+{
+  "userId": 0
+}
+output:
+
+{
+  "data": {
+    "user": null
+  },
+  "errors": [
+    {
+      "message": "Invalid argument Value",
+      "locations": [
+        {
+          "line": 2,
+          "column": 3
+        }
+      ],
+      "path": [
+        "user"
+      ],
+      "extensions": {
+        "code": "BAD_USER_INPUT",
+        "stacktrace": [
+          "GraphQLError: Invalid argument Value",
+          "    at Object.user (file:///E:/session/TCS/GraphQL/apollo-gettingstarted/dist/index.js:21:23)",
+          "    at field.resolve (file:///E:/session/TCS/GraphQL/apollo-gettingstarted/node_modules/@apollo/server/dist/esm/utils/schemaInstrumentation.js:36:28)",
+          "    at executeField (E:\\session\\TCS\\GraphQL\\apollo-gettingstarted\\node_modules\\graphql\\execution\\execute.js:492:20)",
+          "    at executeFields (E:\\session\\TCS\\GraphQL\\apollo-gettingstarted\\node_modules\\graphql\\execution\\execute.js:414:22)",
+          "    at executeOperation (E:\\session\\TCS\\GraphQL\\apollo-gettingstarted\\node_modules\\graphql\\execution\\execute.js:344:14)",
+          "    at execute (E:\\session\\TCS\\GraphQL\\apollo-gettingstarted\\node_modules\\graphql\\execution\\execute.js:136:20)",
+          "    at executeIncrementally (file:///E:/session/TCS/GraphQL/apollo-gettingstarted/node_modules/@apollo/server/dist/esm/incrementalDeliveryPolyfill.js:21:12)",
+          "    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)",
+          "    at async execute (file:///E:/session/TCS/GraphQL/apollo-gettingstarted/node_modules/@apollo/server/dist/esm/requestPipeline.js:226:37)",
+          "    at async processGraphQLRequest (file:///E:/session/TCS/GraphQL/apollo-gettingstarted/node_modules/@apollo/server/dist/esm/requestPipeline.js:155:32)"
+        ]
+      }
+    }
+  ]
+}
+.....................................................................................
+			..................................................................................
+		    Microservice based design - Federation
+.................................................................................
+
+Apollo Federation is a way of combining multiple GraphQL servers into a single, cohesive API. It allows you to build a "distributed GraphQL schema" by stitching together multiple smaller GraphQL services. 
+
+This can be useful in a variety of situations, such as when you have multiple teams working on different parts of a larger application, or when you have multiple microservices that you want to expose through a single GraphQL API.
+
+To use Apollo Federation, you define a shared GraphQL schema that describes the capabilities of all of the underlying GraphQL servers. This shared schema is called the "federated schema," and it acts as a gateway to the underlying GraphQL servers.
+
+
+Clients can then make queries and mutations against the federated schema, which are automatically routed to the appropriate underlying GraphQL server based on the schema definition. This allows clients to access all of the data and functionality provided by the different GraphQL servers through a single, unified API.
+
+Overall, Apollo Federation can help you build more scalable and maintainable GraphQL architectures by allowing you to combine multiple GraphQL servers into a single API.
+
+Core Concepts in Federation:
+.............................
+
+subgraph and super graph:
+.........................
+
+subgraph : Indivual graphql application is called subgraph
+
+Application - Product
+
+-------------------
+schema.graphql
+  type Product {}
+  type Customer {}
+  type Order {}
+
+Resolvers
+
+Data Stores
+---------------------
+
+
+Application - Users
+
+-------------------
+schema.graphql
+  type User {}
+
+Resolvers
+
+Data Stores
+---------------------
+
+Super Graph:/Federated graph
+  You built schema in smallar parts, the division of this based on domain or team.
+ You coimbine everying in a single point - Super Graph...
+
+product.graphql
+
+customer.graphql
+
+............
+
+Since separate app how do they communicate?
+
+Router:
+  A supergraph arch also includes router, which sits between clients and sub graphs.
+ The router is responsiable for accepting incoming operations from the clients and spilting them into smallar operations that can be resolved by a single graph..
+
+...................................................................................
+
+Apollo Federation:
+  => It is platform to faclilates the over all communication and scalling the sub and super graph arch...
+ => why we use this arch, separation of concerns..
+.....................................................................................
+
+Entity:
+
+  In Apollo Federation, an entity is a type that represents a domain-specific object, just like in any other GraphQL API.
+  
+The main difference is that in a federated GraphQL API, the entity types are defined in the federated schema, which acts as a gateway to the underlying GraphQL servers.
+
+//Define Schema
+ type Book {
+    title:String
+    author:String
+ }
+ type Query {
+    books:[Book]
+ }
+
+It is type that you define canonically in one implementing service  and can then reference and extend in other implementing services.
+
+Entity is core building blocks of federed  graph .
+...................................................................................
+
+			 Entity in Graphql meaning that shared schema type
+			 if schema is not sharable which is not entity.
+
+How to create entity?
+ Using @Key directive in our schema
+
+Normal schema Type
+type User{
+  id: ID!
+  name: String!
+}
+
+Entity:
+type User @key(fields: "id") {
+  id: ID!
+  name: String!
+}
+In this example, the User type is an entity type that represents a user in the system. The @key directive specifies the field or fields that uniquely identify a user (in this case, the id field).
+
+When a client makes a query or mutation that involves the User type, the federated schema will route the request to the appropriate underlying GraphQL server based on the schema definition. The server will then handle the request and return the requested data to the client.
+
+Federated Resolver:
+
+  Federed entity must have "distributed Resolver"
+ __resolveReference(obj){
+
+  }
+
+const resolvers = {
+ 
+ User : {
+	__resolveReference(user){
+		return userById(user.id)
+	 }	
+
+  },
+
+  Query: { 
+    ...
+
+  }
+
+}
+
+
+...................................................................................
+				 Application Setup 
+.....................................................................................
+
+You can define single workspace or indidual apps.
+
+There are each sub graph must be separate app and single router app
+
+1.Router Application
+2.Subgraphs...
+
+Steps : 
+ SubGraph Setup
+ Router Setup...
+
+SubGraph Depedency:
+ @apollo/subgraph
+ graphql-tag
+
+
+Steps:
+ Create SubGraph Project
+
+npm i @apollo/subgraph
+npm i graphql-tag  -optional incase if the schema is written outside - 
+
+Level-0
+index.ts
+import { ApolloServer } from '@apollo/server';
+import { startStandaloneServer } from '@apollo/server/standalone';
+import gql from 'graphql-tag';
+
+const typeDefs = gql`
+  type Query {
+    me: User
+  }
+
+  type User {
+    id: ID!
+    username: String
+  }
+`;
+
+const resolvers = {
+  Query: {
+    me() {
+      return { id: '1', username: '@ava' };
+    },
+  },
+};
+
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+});
+
+// Note the top-level await!
+const { url } = await startStandaloneServer(server);
+console.log(`🚀  Server ready at ${url}`);
+
+
+output : schema:
+type Query {
+  me: User
+}
+
+type User {
+  id: ID!
+  username: String
+}
+.....................................................................................
+
+Level -1
+
+Federated schema
+...................
+
+users.ts
+
+import { ApolloServer } from '@apollo/server';
+import { startStandaloneServer } from '@apollo/server/standalone';
+import gql from 'graphql-tag';
+import { buildSubgraphSchema } from '@apollo/subgraph';
+
+
+const typeDefs = gql`
+  # highlight-start
+  extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable"])
+  # highlight-end
+
+  type Query {
+    me: User
+  }
+
+  type User
+    @key(fields: "id") { 
+    id: ID!
+    username: String
+  }
+`;
+
+const resolvers = {
+    Query: {
+        me() {
+            return { id: '1', username: '@ava' };
+        },
+    },
+    User: {
+        __resolveReference(user, { fetchUserById }) {
+            return fetchUserById(user.id);
+        },
+    },
+};
+
+const server = new ApolloServer({
+    schema: buildSubgraphSchema({ typeDefs, resolvers }),
+});
+
+// Note the top level await!
+const { url } = await startStandaloneServer(server, {
+  listen: {
+      port: 4001
+  }
+})
+console.log(`🚀  Server ready at ${url}`);
+
+Gateway
+
+index.ts
+import { ApolloServer } from '@apollo/server';
+import { startStandaloneServer } from '@apollo/server/standalone';
+import { ApolloGateway } from '@apollo/gateway';
+import { readFileSync } from 'fs';
+
+
+const gateway = new ApolloGateway({
+    serviceList: [
+        { name: 'users', url: 'http://localhost:4001' },
+        // Define additional services here
+    ],
+});
+
+
+// Pass the ApolloGateway to the ApolloServer constructor
+
+const server = new ApolloServer({
+    gateway,
+});
+
+
+// Note the top-level `await`!
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`🚀  Server ready at ${url}`);
+
+
+Test:
+ "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "tsc",
+    "start:users": "npm run compile && node ./dist/user.js",
+    "start:app": "npm run compile && node ./dist/index.js"
+
+  },
+
+npm run start:users
+
+npm run start:app
+
+http://localhost:4000/
+
+Query:
+query {
+   me {
+      id
+      username
+   }
+}
+Response:
+{
+  "data": {
+    "me": {
+      "id": "1",
+      "username": "@ava"
+    }
+  }
+}
+
+.................
+
+SuperGraph SDL:
+
+const gateway = new ApolloGateway({
+    serviceList: [
+        { name: 'users', url: 'http://localhost:4001' },
+        // Define additional services here
+    ],
+});
+
+//SUPER Graph schema
+const superGraphSDL = ''
+const gateway = new ApolloGateway({
+    supergraphSdl: superGraphSDL
+});
+
+How to generate superGraphSDL?
+
+
+Install the Rover CLI
+Rover is Apollo's CLI for managing all kinds of graphs, including subgraphs and supergraphs
+
+npm i @apollo/rover -g
+
+rover subgraph introspect http://localhost:4001/graphql > users.graphql
+
+
+
+create config file
+
+supergraph-config.yml
+
+subgraphs:
+  books:
+    routing_url: http://localhost:4001/graphql
+    schema:
+      file: ./users.graphql
+
+
+rover supergraph compose --config ./supergraph-config.yml
+
+rover supergraph compose --config ./supergraph-config.yml > supergraph.graphql
 
 
 
 
+import { ApolloServer } from '@apollo/server';
+import { startStandaloneServer } from '@apollo/server/standalone';
+import { ApolloGateway } from '@apollo/gateway';
+import { readFileSync } from 'fs';
 
 
+// const gateway = new ApolloGateway({
+//     serviceList: [
+//         { name: 'users', url: 'http://localhost:4001' },
+//         // Define additional services here
+//     ],
+// });
+
+//SUPER Graph schema
+const superGraphSDL = readFileSync('./supergraph.graphql', { 'encoding': 'utf8' })
+const gateway = new ApolloGateway({
+    supergraphSdl: superGraphSDL
+});
+
+// Pass the ApolloGateway to the ApolloServer constructor
+
+const server = new ApolloServer({
+    gateway,
+});
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Note the top-level `await`!
+const { url } = await startStandaloneServer(server, {
+    listen: {
+        port: 4000
+    }
+})
+console.log(`🚀  Server ready at ${url}`);
 
 
 
